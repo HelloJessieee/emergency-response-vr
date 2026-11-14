@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f5f3ee">
+<title>SECOND CHANCE — AR response simulator</title>
+<meta name="description" content="A training-only emergency response simulation for AR glasses.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%23cf563e'/%3E%3Cpath d='M30 13h4v17h17v4H34v17h-4V34H13v-4h17z' fill='white'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/public/styles.css">
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">+</span><span><strong>SECOND CHANCE</strong><small>Response training simulator</small></span></div>
+    <div class="topbar-center"><span class="training-dot"></span> TRAINING / SIMULATION <span class="topbar-divider"></span> <span id="connection">CONNECTING</span></div>
+    <div class="topbar-actions"><button class="ghost small" id="share-button">Copy session link</button><button class="ghost small" id="reset-button">Reset demo</button></div>
+  </header>
+  <main class="layout">
+    <aside class="sidebar">
+      <div class="section-heading"><span>01 / RESPONSE</span><span id="session-code">SESSION</span></div>
+      <div id="workflow" class="workflow"></div>
+      <div class="sidebar-bottom"><div class="section-heading">LIVE LOG <span id="event-count">00</span></div><div id="activity" class="activity"></div></div>
+    </aside>
+    <section class="main-area" id="main-content">
+      <div class="stage-head"><div><div class="eyebrow">AR VIEWPORT / TRAINING SCENARIO</div><h1 id="stage-title">Ready when you are.</h1><p id="stage-subtitle">A guided response simulation for a CPR mannequin and AED trainer.</p></div><div class="elapsed"><small>SESSION TIME</small><strong id="elapsed">00:00</strong></div></div>
+      <nav id="view-tabs" class="view-tabs" aria-label="Simulator views"></nav>
+      <div id="viewport" class="viewport"></div>
+      <div id="viewport-footer" class="viewport-footer"></div>
+    </section>
+    <aside class="control-panel">
+      <div class="section-heading"><span>02 / ACTIONS</span><span id="panel-context">STANDBY</span></div>
+      <div id="panel"></div>
+      <section class="assistant-panel" aria-labelledby="assistant-title">
+        <div class="assistant-head"><span class="assistant-icon" aria-hidden="true">✳</span><div><span class="card-kicker">TRAINING ASSISTANT / DEMO</span><h2 id="assistant-title">Ask about this response</h2></div></div>
+        <p class="assistant-intro">Answers use the current simulation state. No real emergency guidance or calls.</p>
+        <div class="assistant-prompts"><button type="button" data-question="What's next?">What’s next?</button><button type="button" data-question="Who is doing what?">Team roles</button></div>
+        <form id="assistant-form" class="assistant-form"><label for="assistant-question" class="visually-hidden">Training question</label><input id="assistant-question" name="question" maxlength="240" placeholder="Ask a training question…" autocomplete="off" required><button id="assistant-submit" type="submit" aria-label="Ask training assistant">↗</button></form>
+        <div id="assistant-result" class="assistant-result" role="status" aria-live="polite"><span id="assistant-mode">READY</span><p id="assistant-answer">Try “What’s next?” or ask who has each role.</p></div>
+        <div class="assistant-privacy">Training questions only. Do not enter personal or patient information.</div>
+      </section>
+      <div class="control-footer"><button class="voice-button" id="voice-button" type="button"><span class="voice-icon">◉</span><span>Voice commands</span><small>OPTIONAL</small></button><p>Manual controls always available.</p></div>
+    </aside>
+  </main>
+  <footer class="site-footer"><span>DEMO ENVIRONMENT · FICTIONAL AED LOCATIONS · NO LIVE EMERGENCY CALLING</span><span>Not a medical device. In a real emergency, call local emergency services directly.</span></footer>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<div id="modal-root"></div>
+<script type="module" src="/public/app.js"></script>
+</body>
+</html>

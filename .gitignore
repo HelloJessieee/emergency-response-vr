@@ -1,0 +1,13 @@
+node_modules/
+.DS_Store
+.env
+.env.*
+!.env.example
+spectacles/SecondChance/Cache/
+spectacles/SecondChance/PluginsUserPreferences/
+spectacles/SecondChance/Support/
+spectacles/SecondChance/Workspaces/
+spectacles/SecondChance/*.lock
+spectacles/.unused-image-materials/
+spectacles/Scene.before-script.bak
+spectacles/build/overlap-version.js

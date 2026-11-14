@@ -1,0 +1,54 @@
+- !<AssetImportMetadata/6cd15485-0e4e-4ebe-acfb-712c3ebeaafc>
+  ImportedAssetIds:
+    JavaScriptAsset: !<reference> 06175dcb-cc70-4e25-bbd5-c024bfeaf2a3
+  ImporterName: JavaScriptAssetImporter
+  PrimaryAsset: !<reference> 06175dcb-cc70-4e25-bbd5-c024bfeaf2a3
+  PackageType: NotAPackage
+  LegacyPackagePolicy: ~
+  ExtraData:
+    {}
+  AssetDataMap:
+    JavaScriptAsset: !<own> 393f8787-072e-4d57-a755-fc4ce653879e
+  DependentFiles:
+    []
+  ImporterSettings: !<AssetImporterSettings>
+    {}
+  CompressionSettings: !<own> 00000000-0000-0000-0000-000000000000
+- !<ScriptAssetData/393f8787-072e-4d57-a755-fc4ce653879e>
+  SvgIcon: ""
+  SetupScript:
+    code: ""
+  Description: ""
+  VersionMajor: 0
+  VersionMinor: 0
+  VersionPatch: 0
+  ComponentUid: 754b0a55-2205-4621-8e42-a19b73b29745
+  ExportUid: 00000000-0000-0000-0000-000000000000
+  PackagePolicy: CanBeUnpacked
+  ScriptInputsHidden:
+    aedTexture: false
+    callAedTexture: false
+    callTexture: false
+    checkTexture: false
+    compressDownTexture: false
+    compressUpTexture: false
+    handsTexture: false
+  ScriptTypesHidden:
+    {}
+  ReadMe: !<reference> 00000000-0000-0000-0000-000000000000
+  DeclarationFile: !<reference> 00000000-0000-0000-0000-000000000000
+  Tags:
+    []
+  Attachments:
+    []
+  DefaultScriptInputs:
+    - checkTexture: !<reference.Texture> 00000000-0000-0000-0000-000000000000
+      callTexture: !<reference.Texture> 00000000-0000-0000-0000-000000000000
+      callAedTexture: !<reference.Texture> 00000000-0000-0000-0000-000000000000
+      handsTexture: !<reference.Texture> 00000000-0000-0000-0000-000000000000
+      compressUpTexture: !<reference.Texture> 00000000-0000-0000-0000-000000000000
+      compressDownTexture: !<reference.Texture> 00000000-0000-0000-0000-000000000000
+      aedTexture: !<reference.Texture> 00000000-0000-0000-0000-000000000000
+  ScriptTypes:
+    -
+      {}
