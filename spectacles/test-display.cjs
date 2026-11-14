@@ -14,7 +14,8 @@ for (const name of textureNames) {
     assert.match(source, new RegExp(`@input Asset\\.Texture ${name}`));
     assert.match(scene, new RegExp(`${name}: !<reference\\.Texture> [0-9a-f-]+`));
 }
-const objects = new Map(), events = {}, logs = [];
+const objects = new Map(), events = {}, logs = [], voiceUpdates = [];
+let asrStarted = false;
 let time = 0;
 function Vec4(r,g,b,a) { Object.assign(this,{r,g,b,a}); }
 function Vec3(x,y,z) { Object.assign(this,{x,y,z}); }
@@ -41,7 +42,13 @@ const context = {
     vec4:Vec4, vec3:Vec3, getTime:()=>time, print:x=>logs.push(x),
     TextFillMode:{Texture:1}, StretchMode:{Stretch:1},
     global:{scene:{createSceneObject:createObject}}, script,
-    require:()=>{throw Error('wearable API unavailable in test');}
+    AsrModule:{AsrTranscriptionOptions:{create:()=>({
+        onTranscriptionUpdateEvent:{add:fn=>voiceUpdates.push(fn)},
+        onTranscriptionErrorEvent:{add() {}}
+    })},AsrMode:{Balanced:1}},
+    require:id=>id==='LensStudio:AsrModule'
+        ? {startTranscribing(){asrStarted=true;}}
+        : (()=>{throw Error('gesture API unavailable in test');})()
 };
 vm.runInNewContext(source,context,{filename:'SecondChanceDisplay.js'});
 assert.equal(logs.some(x=>x.includes('setup failed')),false,logs.join('\n'));
@@ -51,6 +58,8 @@ const tick=t=>{time=t; events.UpdateEvent.forEach(fn=>fn());};
 const advance=t=>{time=t; events.TriggerPrimaryEvent.forEach(fn=>fn());};
 assert.equal(objects.size,2);
 assert.equal(events.UpdateEvent.length,1);
+assert.equal(asrStarted,true);
+assert.equal(voiceUpdates.length,1);
 assert.equal(art.backgroundSettings.fill.texture.name,'checkTexture');
 assert.equal(card.backgroundSettings.fill.texture,undefined);
 assert.match(card.text,/CHECK RESPONSE/);
@@ -76,5 +85,13 @@ advance(5);
 assert.equal(art.backgroundSettings.fill.texture.name,'checkTexture');
 assert.equal(events.UpdateEvent.length,1);
 assert.equal(logs.filter(x=>x.includes('practice step')).length,6);
+time=6; voiceUpdates[0]({text:'下一步',isFinal:false});
+assert.equal(art.backgroundSettings.fill.texture.name,'checkTexture');
+voiceUpdates[0]({text:'下一步',isFinal:true});
+assert.equal(art.backgroundSettings.fill.texture.name,'callTexture');
+time=6.1; voiceUpdates[0]({text:'next',isFinal:true});
+assert.equal(art.backgroundSettings.fill.texture.name,'callTexture');
+time=7; voiceUpdates[0]({text:'重来',isFinal:true});
+assert.equal(art.backgroundSettings.fill.texture.name,'checkTexture');
 assert.equal(logs.some(x=>x.includes('setup failed')),false);
-console.log('Illustrated Lens state check passed: textures, five steps, debounce, staged AED, beat and restart.');
+console.log('Illustrated Lens state check passed: textures, five steps, debounce, staged AED, beat, restart and ASR commands.');
