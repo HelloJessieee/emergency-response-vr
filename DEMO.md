@@ -7,7 +7,7 @@
 3. Open the same session URL in a second browser or phone on the same reachable network. Keep both views open.
 4. On the main view, click **Reset demo** immediately before presenting. If browser voice recognition is unavailable, use the on-screen controls.
 
-For the Spectacles walkthrough, connect the glasses by USB, open `spectacles/SecondChance/SecondChance.esproj` in Lens Studio, and click **Preview Lens**. The wearer advances by pinching thumb and index finger on either hand. The Lens is a training overlay; its mock dispatcher never places a call, and its CPR beat is a visual cue rather than measured feedback.
+For the Spectacles walkthrough, connect the glasses by USB, open `spectacles/SecondChance/SecondChance.esproj` in Lens Studio, and click **Preview Lens**. The wearer advances by pinching thumb and index finger on either hand. On the hand-practice screens (06 HAND POSITION, 07 COMPRESS, 09 AED PADS), hold the pinch for about 0.8 seconds with the hands apart, or say “Next”; quick or stacked-hand pinches are ignored there. The Lens is a training overlay; its mock dispatcher never places a call, and its CPR beat is a visual cue rather than measured feedback.
 
 ## Spectacles walkthrough
 

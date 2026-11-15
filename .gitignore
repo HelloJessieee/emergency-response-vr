@@ -14,3 +14,25 @@ spectacles/build/overlap-version.js
 spectacles/PackageBackups/
 spectacles/SecondChance/Cache.pre-*/
 spectacles/SecondChance/.gitattributes
+
+# Logs and local tool state
+*.log
+npm-debug.log*
+.vscode/
+.idea/
+.claude/settings.local.json
+
+# Python (diagram generators in spectacles/)
+__pycache__/
+*.pyc
+
+# Xcode per-user and build output for the iPhone companion app
+xcuserdata/
+*.xcuserstate
+DerivedData/
+mobile/**/build/
+
+# Lens Studio: regenerated per machine. Its .gitattributes would route assets
+# through Git LFS, but this repo stores them as regular files.
+spectacles/SecondChance/Cache.*/
+spectacles/SecondChance/*.esproj.*.lock

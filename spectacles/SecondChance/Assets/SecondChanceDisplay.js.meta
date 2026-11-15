@@ -33,6 +33,9 @@
     checkTexture: false
     compressDownTexture: false
     compressUpTexture: false
+    handGuideBottomTexture: false
+    handGuideHeelTexture: false
+    handGuideTopTexture: false
     handsTexture: false
     placementDepthCm: false
     placementEnterRadiusCm: false
@@ -40,6 +43,7 @@
     placementExitRadiusCm: false
     placementHoldSeconds: false
     placementStackRadiusCm: false
+    responderMapTexture: false
     voiceAed: false
     voiceBreathing: false
     voiceBreaths: false
@@ -66,6 +70,10 @@
       compressUpTexture: !<reference.Texture> 00000000-0000-0000-0000-000000000000
       compressDownTexture: !<reference.Texture> 00000000-0000-0000-0000-000000000000
       aedTexture: !<reference.Texture> 00000000-0000-0000-0000-000000000000
+      responderMapTexture: !<reference.Texture> 00000000-0000-0000-0000-000000000000
+      handGuideBottomTexture: !<reference.Texture> 00000000-0000-0000-0000-000000000000
+      handGuideTopTexture: !<reference.Texture> 00000000-0000-0000-0000-000000000000
+      handGuideHeelTexture: !<reference.Texture> 00000000-0000-0000-0000-000000000000
       aiBaseUrl: "http://10.27.176.77:4173"
       voiceRate: !<reference.AudioTrackAsset> 00000000-0000-0000-0000-000000000000
       voiceDepth: !<reference.AudioTrackAsset> 00000000-0000-0000-0000-000000000000

@@ -197,6 +197,9 @@
       compressDownTexture: !<reference.Texture> 3d866c4a-ab27-4084-b2fe-c8fd26d10fff
       aedTexture: !<reference.Texture> c5cdf310-f5d3-45ab-a136-b11780e14e6d
       responderMapTexture: !<reference.Texture> 1e62d8e8-5dbf-4115-9f2f-ccff3617fa9c
+      handGuideBottomTexture: !<reference.Texture> 258ec089-6250-4fb4-b8fb-ddca32c14862
+      handGuideTopTexture: !<reference.Texture> 5e9a0412-bcde-46f7-8e1f-6d5b51caf824
+      handGuideHeelTexture: !<reference.Texture> 4d7d8a6e-a782-45fe-9cf4-143209603181
       aiBaseUrl: "http://127.0.0.1:4173"
       voiceRate: !<reference.AudioTrackAsset> 39efe392-5ffc-449e-acaa-74c3ac9a102f
       voiceDepth: !<reference.AudioTrackAsset> 5ba8ed7b-65aa-4b99-ab13-1daa56d5f965

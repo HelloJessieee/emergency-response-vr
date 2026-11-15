@@ -2,6 +2,38 @@
 
 Browser based AR response simulator for a hackathon demonstration with CPR mannequins and AED trainers. This is **not a medical device** or a live emergency response service.
 
+## Current status (2026-11-15)
+
+### Works
+
+- **Browser simulator and server:** the full demo flow, shared multi-device session, mock dispatcher, responder and AED-route simulations, and training assistant. `npm test` passes (18 tests).
+- **Spectacles Lens, confirmed on the glasses:**
+  - It launches over USB from Lens Studio 5.15.4.
+  - The home screen and the 11-screen adult CPR lesson work.
+  - Pinch and English voice commands navigate the lesson.
+  - Spoken CPR questions show a fixed training card and play its bundled voice answer.
+  - The responder map opens by aiming at `MAP` and pinching.
+  - The equipment finder's colour and depth camera frames are captured.
+- **Hand-practice screens 06, 07 and 09:** on the glasses, a pinch must be held for 0.8 s (or say "Next") to advance. Device logs show short, accidental pinches being rejected.
+- **Voice recovery:** if the glasses' speech service goes silent for 20 s or reports an error, the Lens stops and restarts the session. Voice input works again on the glasses with this build.
+- **End of lesson:** after screen 11 (RESUME CPR), "Next" or a pinch returns to the start screen for a fresh run.
+- **Lens flow checks:** `node spectacles/test-display.cjs` simulates the Lens flow, hand tracking, pinch holds, voice recovery and AI calls without the glasses.
+
+### In progress or known issues
+
+- **Phantom pinches:** on the glasses, one resting hand can report pinches several times a second without the wearer pinching. One two-minute run logged 257. These can advance screens or open the responder map or practice 911 panel when that hand's pointing ray rests on those rows. Workaround: keep hands lowered or out of view between actions.
+- **Screen 06 ghost hands:** the picture currently renders as many small repeated copies instead of one life-size pair. It is sized by stretching a Text background, and Lens Studio repeats the texture rather than stretching it. Planned fix: keep the background at the glyph size and scale the object instead. Checking whether the wearer's hands fit the ghost, with green "in position" feedback, is designed but not built.
+- **Not yet verified on the glasses:** virtual hand-placement and AED-pad alignment, model-backed equipment matches and marker placement, and the spoken "Call my contact" iPhone request.
+- **Stale export:** [`spectacles/build/SecondChance.zip`](./spectacles/build/SecondChance.zip) is from 2026-11-14 and does not include the 2026-11-15 changes. Re-export it from Lens Studio before sharing.
+
+### Could improve
+
+- Filter pinches by the confidence the glasses report, and only accept aimed selections while the hand is raised in a pointing pose.
+- Finish screen 06: fit checks for heel position, palms facing down and stacked hands, with direction hints and colour feedback.
+- Replace the local HTTP gateway (USB `adb reverse` to the Mac) with a secured HTTPS backend, so the Lens runs untethered and without Experimental APIs.
+- Calibrate the virtual targets to a physical manikin. Compression depth, force and recoil are not measured and would need dedicated hardware.
+- A repeatable on-glasses test checklist that is compared against the Lens Studio device log.
+
 ## Run locally
 
 Requires Node.js 20 or later.
@@ -65,13 +97,13 @@ Medical copy is limited to an adult training scenario and follows [American Hear
 
 ## Spectacles prototype
 
-The native [Lens Studio project](./spectacles/SecondChance/SecondChance.esproj) runs on Spectacles (2024). Its training flow covers voice activation, scene safety, response and breathing branches, call and bystander prompts, simulated AED routing, CPR rhythm, AED steps, and adaptive user-reported task status. It has an offline emergency-call **training** panel with simulated ringing and three captioned dispatcher prompts. The current build routes “Ask AI…” and natural CPR/AED questions to a server that uses OpenAI to select a bounded training card. Ten approved spoken answers are bundled as Lens audio assets for immediate playback; network audio is a fallback. Device startup, ASR, pinch, color camera, and depth-frame pairing have been confirmed on the glasses. The wearer confirmed hearing the English answer to “How deep should I press?”. The [exported Lens zip](./spectacles/build/SecondChance.zip) matches the latest display script and passes ZIP integrity validation. The Lens does not place a real call, find a live AED, align to a mannequin, or measure compression depth or force.
+The native [Lens Studio project](./spectacles/SecondChance/SecondChance.esproj) runs on Spectacles (2024). Its training flow covers voice activation, scene safety, response and breathing branches, call and bystander prompts, simulated AED routing, CPR rhythm, AED steps, and adaptive user-reported task status. It has an offline emergency-call **training** panel with simulated ringing and three captioned dispatcher prompts. The current build routes “Ask AI…” and natural CPR/AED questions to a server that uses OpenAI to select a bounded training card. Ten approved spoken answers are bundled as Lens audio assets for immediate playback; network audio is a fallback. Device startup, ASR, pinch, color camera, and depth-frame pairing have been confirmed on the glasses. The wearer confirmed hearing the English answer to “How deep should I press?”. The [exported Lens zip](./spectacles/build/SecondChance.zip) is an earlier export (2026-11-14) and needs re-exporting to include the latest changes. The Lens does not place a real call, find a live AED, align to a mannequin, or measure compression depth or force.
 
 The `FirstAidFinder.ts` component is attached to `Lighting`, with `SC Equipment Marker` and a Camera Module asset assigned in the scene. It shares the existing ASR session: say “Find the gauze”, “Find the tourniquet”, “Find the epinephrine”, or “Find the AED trainer”. It pairs a frozen left-camera frame with a depth frame by timestamp, sends a JPEG to the local OpenAI-backed gateway, maps a returned pixel through the cached depth and camera pose, then shows a world-space **possible match** marker. Say “Back” or pinch to clear it. `mockVisionForTraining` is off; turning it on places a clearly simulated marker at image center and does not identify equipment. The project declares `EXPERIMENTAL_API`. A live API request with the AED diagram returned a bounded coordinate, while a blank synthetic image returned `found:false`. Color/depth pairing has now been observed on the glasses, but no model-backed equipment match or marker position has been verified there. The project uses Lens Studio 5.15.4 for Spectacles (2024); Snap's 5.24 branch targets newer SPECS hardware.
 
-On the HAND POSITION lesson, a world-fixed **virtual target** and left/right palm markers use the installed Spectacles Interaction Kit's `getPalmCenter()` world coordinates. Marker movement and alignment feedback need no pinch; pinch advances to COMPRESS. Text and a visible ring distinguish tracking loss, approach, alignment, and approximate two-hand stacking. Say “Set target here” with a visible palm to reposition the virtual target for a manikin demo. This is manually placed geometry, not a verified physical chest-placement measurement. Tolerances and hold time are editable on the `SecondChanceDisplay` component attached to `Lighting`. Desktop simulated keys are `J` far, `K` target, `O` wrong depth, `R` right hand, `V` both, `L` lost, `T` set target, and `N` next. The hand provider initializes on Spectacles; visual marker movement and physical alignment remain unverified.
+On the HAND POSITION lesson, flat **ghost hands** (two stacked palm-down hands with a heel ring, drawn by `spectacles/make_hand_guide.py`) appear at about waist height in front of the wearer, fingers pointing away, as the shape to fit the hands into. On the glasses they currently render as repeated small copies (see Current status). The heel ring is the world-fixed **virtual target**; it and the left/right palm markers use the installed Spectacles Interaction Kit's `getPalmCenter()` world coordinates. Marker movement and alignment feedback need no pinch. On the headset, a pinch held for about 0.8 seconds (or “Next”) advances to COMPRESS; quick pinches and pinches with both hands together are ignored on screens 06, 07 and 09, because stacking hands can register as a pinch. The footer shows the hold progress. The compact screen 06 card sits above the target so the two do not overlap, and brief tracking dropouts no longer blink the markers or rewrite the card. Text and a visible ring distinguish tracking loss, approach, alignment, and approximate two-hand stacking. Say “Set target here” with a visible palm to reposition the virtual target for a manikin demo. This is manually placed geometry, not a verified physical chest-placement measurement. Tolerances and hold time are editable on the `SecondChanceDisplay` component attached to `Lighting`. Desktop simulated keys are `J` far, `K` target, `O` wrong depth, `R` right hand, `V` both, `L` lost, `T` set target, and `N` next. The hand provider initializes on Spectacles; visual marker movement and physical alignment remain unverified.
 
-The `09 / AED PADS` lesson now has two virtual target rings and two pad graphics. A visible palm moves an unplaced pad continuously; holding it within the target's lateral and depth tolerances places it on that virtual target. Tracking loss hides a pad that has not been placed. Pinch or “Next” still advances. Desktop Preview can simulate hand movement with `J` (far), `K` (pad A target), `R` (pad B target), `O` (wrong depth), and `L` (tracking loss). These graphics and placement checks are training aids; they have not been calibrated to a physical manikin or verified on the headset. Follow the actual AED's pad diagram and prompts.
+The `09 / AED PADS` lesson now has two virtual target rings and two pad graphics. A visible palm moves an unplaced pad continuously; holding it within the target's lateral and depth tolerances places it on that virtual target. Sustained tracking loss (over 0.25 s) hides a pad that has not been placed. A held pinch or “Next” advances. Desktop Preview can simulate hand movement with `J` (far), `K` (pad A target), `R` (pad B target), `O` (wrong depth), and `L` (tracking loss). These graphics and placement checks are training aids; they have not been calibrated to a physical manikin or verified on the headset. Follow the actual AED's pad diagram and prompts.
 
 Say **“Locate CPR responder nearby”** to open a fictional responder map on Spectacles, or aim at `MAP / CPR RESPONDER SIM` on the Lens home card and pinch. It shows YOU, Volunteer A, and a sample route labeled `SIM`; “Back” or pinch returns to the lesson. The map uses no GPS, live responder directory, notifications, or dispatch. The **Second Chance** iPhone app also opens directly to an independent **Responders** simulation with a MapKit street basemap, three fictional volunteers, a sample route, and manual `Simulate request` / `Simulate arrival` controls. It uses fixed demo coordinates, not the phone's location, and needs no Spectacles pairing. Map tiles may require internet access.
 
@@ -82,6 +114,16 @@ Set the training region and number in `emergencyConfig` near the top of `SecondC
 Open the project in Lens Studio while the app is closed, connect Spectacles over USB, and click **Preview Lens**. See [Snap's wired connection guide](https://developers.snap.com/spectacles/get-started/start-building/connecting-lens-studio-to-spectacles). Lens Studio compiled and sent the responder-map revision over USB, and the wearer confirmed opening its map by aiming and pinching. Preview can simulate next, call flow, and wrist motion; voice access to the map still needs a device retest.
 
 For the current USB-connected AI demo, keep `node server.js` running on this Mac and forward the port with Lens Studio's bundled ADB: `adb reverse tcp:4173 tcp:4173`. Both Lens gateway inputs use `http://127.0.0.1:4173`, which reaches the Mac through that USB mapping; reconnecting the glasses may require redoing the mapping. The ignored `.env` contains the OpenAI key; the key is not included in the Lens. Local HTTP needs **Allow Experimental API** in Lens Studio Project Settings. For an untethered or publishable build, use a secured HTTPS gateway and verify headset connectivity. [Snap Internet Access](https://developers.snap.com/spectacles/about-spectacles-features/apis/internet-access)
+
+### Lens Studio and Git LFS
+
+Lens Studio writes `spectacles/SecondChance/.gitattributes`, which routes everything under `Assets/` and `Packages/` through Git LFS. This repository stores those files directly, so that file is ignored. Git still applies it locally, however, and images, audio and packages then show as modified even when unchanged. Committing them would upload LFS placeholder files instead of the real assets. Add this local override once per clone (it is never uploaded):
+
+```bash
+printf '%s\n' \
+  'spectacles/SecondChance/Assets/** !filter !diff !merge' \
+  'spectacles/SecondChance/Packages/** !filter !diff !merge' >> .git/info/attributes
+```
 
 See [project.md](./project.md) for status and next steps.
 

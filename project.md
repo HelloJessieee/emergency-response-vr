@@ -1,6 +1,20 @@
 # SECOND CHANCE — project status
 
-Updated: 2026-11-14
+Updated: 2026-11-15
+
+## Voice silence recovery (2026-11-15, 02:55 PST)
+
+Device logs show ASR last produced output at 01:47:31. Every launch from 01:49 to 02:41 logged `voice session started` and then no partials, finals or errors, including the same build that recognised "how do I do CPR" at 01:45. The speech service went silent on the glasses; no code change caused it. The Lens previously never restarted ASR, and any ASR error ended voice for the run. Now a session with no update events for 20 s (doubling to a 120 s cap; any sound normally yields partials) or an error (retry after 3 s, doubling) is stopped with `stopTranscribing()` and then started again. Starting over a live session had returned InternalError on device. A temporary `HEARD: "…"` footer echo was added for diagnosis and removed once the wearer confirmed voice works again (2026-11-15). Logs: `voice restarting: …`, `voice session started (restart)`, `voice retry in Ns`. Lens and server tests pass. The wearer confirmed voice input works again on the glasses after this build.
+
+Also on 2026-11-15: after screen 11 (RESUME CPR), Next or a pinch returns to the start screen via `reset()` instead of looping to screen 07.
+
+## Screen 06 ghost hands, steps 1–2 (2026-11-15, 01:37 PST)
+
+`spectacles/make_hand_guide.py` draws three white layers in `Assets/Diagrams/`: `hand_guide_bottom.png` and `hand_guide_top.png` (stacked palm-down hands, fingers interlaced, 20 × 24 cm at 32 px/cm) and `hand_guide_heel.png` (a 5 cm heel ring). The Lens tints them at runtime, so later steps can colour each hand separately. Lens Studio imported them; the `.meta` files keep Lens Studio's own texture IDs, and `Scene.scene` binds them to `handGuideBottomTexture`, `handGuideTopTexture` and `handGuideHeelTexture` (Lens Studio reloaded the scene at 01:35:27). On screen 06 the ghost lies flat at about waist height, 40 cm ahead and 45 cm below eye level, with the fingers pointing away from the wearer. The heel ring replaces the old `( + )` placement target, so the existing alignment check now measures against a level chest plane. Each picture is a Text background, sized by measuring one hidden glyph with `getBoundingBox()`; the Lens logs `SECOND CHANCE guide … sized 20 x 24 cm` once per layer. Also fixed: the screen 06 target and screen 09 pad targets used `transform.forward`, which in Lens Studio points behind the wearer (cameras look along `back`), so on the glasses they spawned behind the head. The Lens flow test, including new ghost position, orientation and size checks, and all 18 server tests pass. **Not yet seen on the glasses:** the real-world size depends on Text background margins being in centimetres, which only a device check can confirm.
+
+## Hand-screen glitch fix (2026-11-15, 00:55 PST)
+
+The 00:25 device log showed screens 06 → 07 → 08 → 09 → 10 → 11 → 07 cycling three times in about 17 seconds after the wearer reached HAND POSITION, consistent with accidental pinches while hands were raised and stacked. On screens 06, 07 and 09 the headset now advances only on a pinch held for 0.8 s (GestureModule pinch-down/up) or “Next”; quick pinches, pinches with palms within 12 cm, and `TriggerPrimaryEvent` are ignored there, and each pinch is logged (`SECOND CHANCE pinch …`). Screen 06 now uses a compact 7-line card raised 9 cm without the illustration, like screen 09, and world guides draw above the card. Placement and pad status changes must hold for 0.3 s before the card is rewritten, markers survive 0.25 s tracking dropouts, the compress beat swaps only the illustration, and voice/call cards hide and then restore the same practice targets instead of re-anchoring them. The per-frame update no longer throws while the iPhone call card is shown. `node spectacles/test-display.cjs` and all 18 server tests pass; Lens Studio reimported the script at 00:50:57. **This revision has not yet been sent to or checked on the glasses.**
 
 ## Current device block (2026-11-14, 20:47 PST)
 
