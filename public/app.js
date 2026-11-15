@@ -10,6 +10,7 @@ sessionStorage.setItem('secondChanceId', participantId);
 const participantName = sessionStorage.getItem('secondChanceName') || 'Rescuer ' + participantId.slice(0, 4).toUpperCase();
 sessionStorage.setItem('secondChanceName', participantName);
 let state = null, socket = null, view = 'overview', toastTimer = null, lastAssistantRevision = null, assistantBusy = false;
+let lastAssistantQuestion = '', mediaReady = false, recording = null;
 const tabs = [['overview','01 OVERVIEW'],['aed','02 AED MAP'],['cpr','03 CPR COACH'],['trainer','04 AED TRAINER'],['team','05 TEAM']];
 
 function toast(message) {
@@ -215,6 +216,8 @@ async function askAssistant(question) {
       $('assistant-mode').textContent = result.mode === 'model' ? 'AI PHRASING · DEMO FACTS' : 'LOCAL TRAINING GUIDANCE';
       $('assistant-answer').textContent = result.answer;
       lastAssistantRevision = requestRevision;
+      lastAssistantQuestion = value;
+      $('assistant-speak').disabled = !mediaReady;
     }
   } catch {
     $('assistant-mode').textContent = 'UNAVAILABLE';
@@ -233,6 +236,92 @@ document.querySelectorAll('[data-question]').forEach(button => button.addEventLi
   $('assistant-question').value = button.dataset.question;
   askAssistant(button.dataset.question);
 }));
+
+fetch('/api/ai-status').then(response => response.json()).then(result => {
+  mediaReady = Boolean(result.enabled);
+  $('assistant-status').textContent = mediaReady ? 'OPENAI CONNECTED / TRAINING' : 'LOCAL TRAINING MODE';
+  $('assistant-speak').disabled = !mediaReady || !lastAssistantQuestion;
+}).catch(() => { $('assistant-status').textContent = 'LOCAL TRAINING MODE'; });
+
+async function transcribeFile(file) {
+  if (!mediaReady) return toast('OpenAI is not configured on the server.');
+  if (!file || file.size > 2_000_000) return toast('Choose an audio clip under 2 MB.');
+  $('assistant-mode').textContent = 'TRANSCRIBING';
+  $('assistant-answer').textContent = 'Turning your training question into text…';
+  try {
+    const response = await fetch('/api/transcribe', { method: 'POST', headers: { 'Content-Type': file.type || 'audio/webm' }, body: file });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Transcription unavailable.');
+    $('assistant-question').value = result.text;
+    await askAssistant(result.text);
+  } catch (error) { toast(error.message); $('assistant-mode').textContent = 'AUDIO UNAVAILABLE'; }
+}
+
+$('assistant-audio-upload').onclick = () => $('assistant-audio-input').click();
+$('assistant-audio-input').onchange = event => {
+  transcribeFile(event.target.files?.[0]);
+  event.target.value = '';
+};
+
+$('assistant-record').onclick = async () => {
+  if (recording) { recording.stop(); return; }
+  if (!mediaReady) return toast('OpenAI is not configured on the server.');
+  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return toast('Microphone recording requires a supported secure browser.');
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mimeType = ['audio/webm', 'audio/mp4'].find(type => MediaRecorder.isTypeSupported(type));
+    const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+    const chunks = [];
+    recording = recorder;
+    recorder.ondataavailable = event => { if (event.data.size) chunks.push(event.data); };
+    recorder.onstop = () => {
+      stream.getTracks().forEach(track => track.stop());
+      recording = null;
+      $('assistant-record').textContent = '● Record question';
+      transcribeFile(new Blob(chunks, { type: recorder.mimeType || 'audio/webm' }));
+    };
+    recorder.start();
+    $('assistant-record').textContent = '■ Stop recording';
+    setTimeout(() => { if (recording === recorder && recorder.state === 'recording') recorder.stop(); }, 10000);
+  } catch { toast('Microphone access unavailable. Use an audio file or type your question.'); }
+};
+
+$('assistant-photo').onclick = () => $('assistant-photo-input').click();
+$('assistant-photo-input').onchange = async event => {
+  const file = event.target.files?.[0];
+  event.target.value = '';
+  if (!mediaReady) return toast('OpenAI is not configured on the server.');
+  if (!file || file.size > 2_000_000 || !['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) return toast('Choose a PNG, JPEG, or WebP under 2 MB.');
+  const resultBox = $('assistant-vision-result');
+  resultBox.hidden = false;
+  resultBox.textContent = 'Checking training equipment…';
+  try {
+    const image = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    const response = await fetch('/api/vision', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image }) });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Image analysis unavailable.');
+    resultBox.textContent = result.answer;
+  } catch (error) { resultBox.textContent = error.message; }
+};
+
+$('assistant-speak').onclick = async () => {
+  if (!lastAssistantQuestion) return;
+  $('assistant-speak').disabled = true;
+  try {
+    const response = await fetch('/api/speech', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId, question: lastAssistantQuestion }) });
+    if (!response.ok) throw new Error('Voice playback unavailable.');
+    const url = URL.createObjectURL(await response.blob());
+    const audio = new Audio(url);
+    audio.onended = audio.onerror = () => URL.revokeObjectURL(url);
+    await audio.play();
+  } catch (error) { toast(error.message); }
+  finally { $('assistant-speak').disabled = false; }
+};
 $('voice-button').onclick = () => {
   const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!Recognition) return toast('Voice recognition unavailable. Use manual controls.');

@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import http from "node:http";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -6,25 +7,55 @@ import { WebSocketServer, WebSocket } from "ws";
 import { createInitialState, reduceEvent } from "./shared/engine.js";
 import { trainingReply } from "./shared/training-assistant.js";
 import { rephraseApproved } from "./shared/model-gateway.js";
+import { inspectTrainingImage, transcribeTrainingAudio, speakApprovedAnswer } from "./shared/media-gateway.js";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PORT) || 4173;
 const sessions = new Map();
 const types = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".svg": "image/svg+xml" };
 const assistantRequests = new Map();
+const mediaRequests = new Map();
 
 function json(response, status, body) {
   response.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
   response.end(JSON.stringify(body));
 }
 
-async function readJson(request) {
-  let body = "";
+async function readBytes(request, maxBytes) {
+  const chunks = [];
+  let size = 0;
   for await (const chunk of request) {
-    body += chunk;
-    if (body.length > 1024) throw new Error("Question is too long.");
+    size += chunk.length;
+    if (size > maxBytes) throw new Error('Request too large.');
+    chunks.push(chunk);
   }
-  return JSON.parse(body);
+  return Buffer.concat(chunks);
+}
+
+async function readJson(request, maxBytes = 1024) {
+  return JSON.parse((await readBytes(request, maxBytes)).toString('utf8'));
+}
+
+function sameOrigin(request, url) {
+  if (!request.headers.origin) return true;
+  try { return new URL(request.headers.origin).host === url.host; }
+  catch { return false; }
+}
+
+function aiAvailable(request) {
+  const address = request.socket.remoteAddress || '';
+  return Boolean(process.env.OPENAI_API_KEY) && (
+    process.env.AI_ALLOW_LAN === '1' || ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(address)
+  );
+}
+
+function limited(request, route, max) {
+  const key = `${route}:${request.socket.remoteAddress || 'local'}`;
+  const now = Date.now();
+  const recent = (mediaRequests.get(key) || []).filter(time => now - time < 60000);
+  recent.push(now);
+  mediaRequests.set(key, recent);
+  return recent.length > max;
 }
 
 function getSession(id) {
@@ -44,14 +75,48 @@ function apply(session, event) {
 
 const server = http.createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
+  if (url.pathname.startsWith('/api/') && !sameOrigin(request, url)) return json(response, 403, { error: 'Origin not allowed.' });
+  if (url.pathname === '/api/ai-status') return json(response, 200, { enabled: aiAvailable(request) });
+  if (url.pathname === '/api/vision') {
+    if (request.method !== 'POST') return json(response, 405, { error: 'POST required.' });
+    if (!aiAvailable(request)) return json(response, 503, { error: 'AI is unavailable on this connection.' });
+    if (limited(request, 'vision', 4)) return json(response, 429, { error: 'Try again in a minute.' });
+    try {
+      const payload = await readJson(request, 2_800_100);
+      return json(response, 200, await inspectTrainingImage(payload?.image));
+    } catch (error) {
+      return json(response, error.message === 'INVALID_IMAGE' || error.message === 'Request too large.' ? 400 : 502, { error: error.message === 'INVALID_IMAGE' ? 'Use a PNG, JPEG, or WebP under 2 MB.' : 'Image analysis unavailable.' });
+    }
+  }
+  if (url.pathname === '/api/transcribe') {
+    if (request.method !== 'POST') return json(response, 405, { error: 'POST required.' });
+    if (!aiAvailable(request)) return json(response, 503, { error: 'AI is unavailable on this connection.' });
+    if (limited(request, 'transcribe', 6)) return json(response, 429, { error: 'Try again in a minute.' });
+    try {
+      const bytes = await readBytes(request, 2_000_000);
+      return json(response, 200, { text: await transcribeTrainingAudio(bytes, request.headers['content-type']) });
+    } catch (error) {
+      return json(response, ['INVALID_AUDIO', 'Request too large.'].includes(error.message) ? 400 : 502, { error: 'Audio unavailable. Record a short clip under 2 MB.' });
+    }
+  }
+  if (url.pathname === '/api/speech') {
+    if (request.method !== 'POST') return json(response, 405, { error: 'POST required.' });
+    if (!aiAvailable(request)) return json(response, 503, { error: 'AI is unavailable on this connection.' });
+    if (limited(request, 'speech', 6)) return json(response, 429, { error: 'Try again in a minute.' });
+    let payload;
+    try { payload = await readJson(request); } catch { return json(response, 400, { error: 'Invalid question.' }); }
+    const question = typeof payload?.question === 'string' ? payload.question.trim() : '';
+    if (!question || question.length > 240) return json(response, 400, { error: 'Question must be 1–240 characters.' });
+    const id = String(payload.sessionId || '').replace(/[^a-zA-Z0-9-]/g, '').slice(0, 48) || 'demo';
+    try {
+      const bytes = await speakApprovedAnswer(trainingReply(getSession(id).state, question).answer);
+      response.writeHead(200, { 'Content-Type': 'audio/mpeg', 'Content-Length': bytes.length, 'Cache-Control': 'no-store' });
+      response.end(bytes);
+    } catch { json(response, 502, { error: 'Speech unavailable.' }); }
+    return;
+  }
   if (url.pathname === "/api/assistant") {
     if (request.method !== "POST") return json(response, 405, { error: "POST required." });
-    const origin = request.headers.origin;
-    if (origin) {
-      let originHost;
-      try { originHost = new URL(origin).host; } catch { return json(response, 403, { error: "Origin not allowed." }); }
-      if (originHost !== url.host) return json(response, 403, { error: "Origin not allowed." });
-    }
     let payload;
     try { payload = await readJson(request); }
     catch { return json(response, 400, { error: "Invalid question." }); }
@@ -65,7 +130,7 @@ const server = http.createServer(async (request, response) => {
     recent.push(now);
     assistantRequests.set(requester, recent);
     const language = /[\u3400-\u9fff]/.test(question) ? "Chinese" : "English";
-    const generated = recent.length <= 8 ? await rephraseApproved(reply, language) : null;
+    const generated = aiAvailable(request) && recent.length <= 8 ? await rephraseApproved(reply, language) : null;
     return json(response, 200, { answer: generated || reply.answer, mode: generated ? "model" : "scripted", topic: reply.topic });
   }
   if (url.pathname === "/health") {

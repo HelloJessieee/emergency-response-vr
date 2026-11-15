@@ -11,3 +11,6 @@ spectacles/SecondChance/*.lock
 spectacles/.unused-image-materials/
 spectacles/Scene.before-script.bak
 spectacles/build/overlap-version.js
+spectacles/PackageBackups/
+spectacles/SecondChance/Cache.pre-*/
+spectacles/SecondChance/.gitattributes
