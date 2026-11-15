@@ -320,7 +320,8 @@ try {
   var now = getTime();
   var fade = Math.min(1,Math.max(0.3,(now-transitionAt)/0.18));
   card.textFill.color = new vec4(1,1,1,fade);
-  bg.fill.color = new vec4(0.02,0.07,0.10,0.9*fade);
+  bg.fill.color = practicing() && now<practice.highlightUntil ?
+   new vec4(0.03,0.14,0.15,0.9*fade) : new vec4(0.02,0.07,0.10,0.9*fade);
   art.backgroundSettings.fill.colorTint = new vec4(1,1,1,fade);
   if (practicing()) practiceSample(handSample(),now);
   var view = overlay ? answers[overlay] : screens[current];
