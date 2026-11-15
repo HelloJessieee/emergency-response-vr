@@ -5,6 +5,7 @@
  // @input Asset.Texture compressUpTexture
  // @input Asset.Texture compressDownTexture
  // @input Asset.Texture aedTexture
+ // @input Asset.Texture responderMapTexture
  // @input string aiBaseUrl = "http://127.0.0.1:4173"
  // @input Asset.AudioTrackAsset voiceRate
  // @input Asset.AudioTrackAsset voiceDepth
@@ -45,7 +46,7 @@ function manualCallTail() {
 }
 
 var screens = {
- home: ["SECOND CHANCE", "check", ["ADULT CPR TRAINING", "Say START EMERGENCY.", "Or ASK AI how fast?"], "Real emergency? Use phone."],
+ home: ["SECOND CHANCE", "check", ["ADULT CPR TRAINING", "Pinch to start lesson.", "Aim at MAP + pinch."], "MAP / CPR RESPONDER SIM"],
  safety: ["01 / SCENE SAFETY", "check", ["Check for traffic, fire,", "wires or other danger.", "Is the scene safe?"], "Say SAFE or UNSAFE."],
  unsafe: ["STOP / SCENE UNSAFE", "check", ["Do not enter danger.", "Move to safety and", "call emergency services."], "Say RESTART to retry."],
  response: ["02 / CHECK RESPONSE", "check", ["Tap both shoulders.", "Shout: Are you OK?", "Does the adult respond?"], "Say YES or NO."],
@@ -63,6 +64,7 @@ var screens = {
  navStart: ["AED ROUTE / SIM", "callAed", ["Training route only.", "AED: lobby cabinet.", "No live AED data."], "Say NEXT for route."],
  navHall: ["AED ROUTE / SIM", "callAed", ["Step 1: leave the room.", "Go toward the lobby.", "Keep CPR going here."], "Say NEXT for cabinet."],
  navCabinet: ["AED ROUTE / SIM", "aed", ["Step 2: find the", "lobby AED cabinet.", "Bring AED to the adult."], "Say AED HERE or BACK."],
+ responderMap: ["CPR RESPONDER / SIM", "responder", ["Fictional Volunteer A", "shown 60 m away.", "Route is a training demo."], "SIM ONLY / NO LIVE POSITION"],
  help: ["CALL STATUS", "call", ["This Lens cannot dial 911.", "On iPhone, use Siri or", "ask someone to call."], "Say CALLED when done."]
 };
 var lesson = ["home","safety","response","breathing","call","team","hands","compress","aedPower","aedPads","aedClear","aedResume"];
@@ -88,6 +90,7 @@ function topicFor(text) {
  return null;
 }
 function textureFor(kind, down) {
+ if (kind === "responder") return script.responderMapTexture || script.callAedTexture;
  if (kind === "check") return script.checkTexture;
  if (kind === "call") return script.callTexture;
  if (kind === "callAed") return script.callAedTexture;
@@ -203,8 +206,16 @@ try {
   ["Say FIND THE GAUZE.", "The Lens checks one view.", "Verify any result yourself."],
   "TRAINING / VISUAL CHECK"];
  var aiView = ["AI / READY", "check", ["Ask a training question.", "Say ASK AI, then speak.", "Pinch to return."], "TRAINING ONLY / NO LIVE AID"];
+ var phoneView = ["IPHONE / CALL REQUEST", "call", ["Pair the iPhone app.", "Set a non-emergency number", "on the phone first."], "NO CALL HAS BEEN PLACED"];
+ // This build uses the local USB bridge. Starting an unpaired Mobile Kit
+ // session is unnecessary and can compete with other Spectacles services.
  var aiRequestId = 0, internetModule = null, remoteMediaModule = null;
  var aiAudio = null, aiTopic = null, speechActive = false, lastSpeechAt = -10;
+ var speechStartedAt = -1;
+ var asrModule = null, asrOptions = null;
+ var lastAsrUpdateAt = -1, lastAsrPartialLogAt = -1;
+ var voiceInternetAvailable = true, voiceFailure = null;
+ var aiAudioProbeAt = -1;
  var aiSpokenTopic = null, aiPendingTopic = null;
  var bundledVoices = {rate:script.voiceRate,depth:script.voiceDepth,
   hands:script.voiceHands,aed:script.voiceAed,breathing:script.voiceBreathing,
@@ -214,6 +225,7 @@ try {
  try { internetModule = require("LensStudio:InternetModule"); }
  catch (networkError) { print("SECOND CHANCE AI network unavailable: " + networkError); }
  var callPanel = null, callTarget = false, lastCallTargetAt = -1;
+ var mapTarget = false, lastMapTargetAt = -1;
  var lastAction = -1, transitionAt = -1, beatDown = false;
  var callReported = false, callerAssigned = false, runnerAssigned = false, aedPresent = false;
  var practice = newPractice(), leftHand = null, rightHand = null, handsReady = false;
@@ -222,7 +234,13 @@ try {
   try {
    remoteMediaModule = require("LensStudio:RemoteMediaModule");
    aiAudio = obj.createComponent("Component.AudioComponent");
-   aiAudio.volume = 0.9;
+   aiAudio.volume = 1.0;
+   // Spoken instructions are head-centered UI audio, not a source in the room.
+   // The display object sits at the scene origin, away from the headset.
+   if (aiAudio.spatialAudio) aiAudio.spatialAudio.enabled = false;
+   if (typeof Audio !== "undefined" && Audio.PlaybackMode)
+    aiAudio.playbackMode = Audio.PlaybackMode.LowLatency;
+   print("SECOND CHANCE audio configured: nonspatial / low latency");
   } catch (audioError) {print("SECOND CHANCE AI audio unavailable: " + audioError);}
  }
  var editorHand = {tracked:false,position:{x:0,y:0,z:0}};
@@ -381,6 +399,12 @@ try {
    if (ct && ct.getWorldRotation && target.getTransform().setWorldRotation)
     target.getTransform().setWorldRotation(ct.getWorldRotation());
    target.enabled=true;padMarkers[index].enabled=false;
+   var label=padMarkers[index].getComponent ?
+    padMarkers[index].getComponent("Component.Text") : null;
+   if (label) {
+    label.text=index ? "[ PAD B  + ]" : "[ PAD A  + ]";
+    label.textFill.color=new vec4(1,0.86,0.45,1);
+   }
   });
  }
  function padZone(index,position,exit) {
@@ -444,6 +468,11 @@ try {
      padPractice.target[index].x,padPractice.target[index].y,
      padPractice.target[index].z));
     padTargets[index].enabled=false;
+    var placedLabel=marker.getComponent ? marker.getComponent("Component.Text") : null;
+    if (placedLabel) {
+     placedLabel.text=index ? "[ PAD B  SET ]" : "[ PAD A  SET ]";
+     placedLabel.textFill.color=new vec4(0.32,1,0.76,1);
+    }
     print("SECOND CHANCE virtual AED pad " + (index ? "B" : "A") +
      " placed; physical contact unverified");
    }
@@ -553,6 +582,9 @@ try {
   return {side:side,position:hand.wrist.position,handsClose:handsClose};
  }
  function footer() {
+  if (!voiceInternetAvailable) return "VOICE NEEDS WI-FI / PINCH";
+  if (voiceFailure === "Unauthenticated") return "SIGN IN FOR VOICE / PINCH";
+  if (voiceFailure) return "VOICE UNAVAILABLE / PINCH";
   if (callPanel) return "AIM / PINCH OR SAY SELECT";
   if (overlay) return "SAY BACK / PINCH BACK";
   if (current === "safety" || current === "call")
@@ -560,7 +592,8 @@ try {
   if (current === "safety" || current === "response" || current === "breathing") return "PINCH = SCENARIO ANSWER";
   if (current === "unsafe" || current === "responsive" || current === "breathingYes") return "SAY RESTART / PINCH";
   if (current === "navCabinet") return "SAY AED HERE / BACK";
-  if (current === "home") return "SAY START / PINCH";
+  if (current === "responderMap") return "SAY BACK / PINCH BACK";
+  if (current === "home") return mapTarget ? "> MAP / PINCH" : "SAY START / PINCH";
   return "SAY NEXT / PINCH NEXT";
  }
  function render() {
@@ -594,7 +627,8 @@ try {
    return;
   }
   var view = overlay ? (overlay === "ai" ? aiView :
-   overlay === "vision" ? visionView : answers[overlay]) : screens[current];
+   overlay === "vision" ? visionView :
+   overlay === "phone" ? phoneView : answers[overlay]) : screens[current];
   if (padsActive() && padPractice) {
    card.size=39;
    card.text=["09 / AED PADS","VIRTUAL TRAINING TARGETS",
@@ -645,6 +679,7 @@ try {
    if (editorMode) {editorHand.tracked=false;editorHand.position={x:0,y:0,z:0};}
   }
   current = id; overlay = null; beatDown = false; callTarget = false;
+  mapTarget = false;
   if (id==="hands") beginPlacement();
   if (id==="aedPads") beginPads();
   transitionAt = getTime();
@@ -652,6 +687,7 @@ try {
  }
  function reset() {
   callPanel=null; callTarget=false; lastCallTargetAt=-1;
+  mapTarget=false; lastMapTargetAt=-1;
   callReported = false; callerAssigned = false; runnerAssigned = false; aedPresent = false;
   returnScreen = "call"; show("home");
  }
@@ -719,6 +755,10 @@ try {
    if (height < -15 || height > 8 || (focus==="secondary" &&
        (callPanel.stage==="ringing" || callPanel.stage==="ended"))) return;
    if (focus!==callPanel.focus) {callPanel.focus=focus;render();}
+  } else if (current==="home") {
+   var onMap=height < -5 && height > -15;
+   lastMapTargetAt=getTime();
+   if (onMap!==mapTarget) {mapTarget=onMap;render();}
   } else if (current==="safety" || current==="call") {
    var active=height < -5 && height > -15;
    if (active!==callTarget) {callTarget=active;render();}
@@ -730,7 +770,8 @@ try {
   if (current === "unsafe" || current === "responsive" || current === "breathingYes") { reset(); return; }
   if (current === "navStart") { show("navHall"); return; }
   if (current === "navHall") { show("navCabinet"); return; }
-  if (current === "navCabinet" || current === "help") { show(returnScreen); return; }
+  if (current === "navCabinet" || current === "help" || current === "responderMap")
+   { show(returnScreen); return; }
   if (current === "aedResume") { show("compress"); return; }
   var index = lesson.indexOf(current);
   if (index >= 0 && index < lesson.length - 1) show(lesson[index + 1]);
@@ -756,6 +797,12 @@ try {
  function openNav() {
   if (!accepted()) return;
   returnScreen = current; show("navStart");
+ }
+ function openResponderMap() {
+  if (!accepted()) return;
+  returnScreen=current;
+  show("responderMap");
+  print("SECOND CHANCE simulated responder map opened; no live location");
  }
  function aedHere() {
   if (!accepted()) return;
@@ -784,8 +831,10 @@ try {
  }
  function stopAiAudio() {
   if (aiAudio && aiAudio.isPlaying && aiAudio.isPlaying()) aiAudio.stop(true);
+  aiAudioProbeAt = -1;
   if (speechActive) lastSpeechAt = getTime();
   speechActive = false;
+  speechStartedAt = -1;
   aiSpokenTopic = null;
   aiPendingTopic = null;
  }
@@ -793,15 +842,19 @@ try {
   if (!track || !aiAudio || requestId !== aiRequestId || overlay !== "ai") return false;
   stopAiAudio();
   aiAudio.audioTrack = track;
+  print("SECOND CHANCE voice asset: " + topic + " duration " + aiAudio.duration);
   aiAudio.setOnFinish(function() {
+   print("SECOND CHANCE voice finished: " + topic + " at " + aiAudio.position);
    speechActive = false; lastSpeechAt = getTime();
    if (requestId === aiRequestId && overlay === "ai") {
     aiView[3] = "VOICE FINISHED"; render();
    }
   });
   speechActive = true;
+  speechStartedAt = getTime();
   aiSpokenTopic = topic;
   aiAudio.play(1);
+  aiAudioProbeAt = getTime() + 0.5;
   aiView[3] = "SPOKEN TRAINING ANSWER"; render();
   print("SECOND CHANCE bundled voice playing: " + topic + " / " + aiAudio.isPlaying());
   return true;
@@ -839,6 +892,7 @@ try {
      }
     });
     speechActive = true;
+    speechStartedAt = getTime();
     aiSpokenTopic = topic;
     aiAudio.play(1);
     aiView[3] = "AI-GENERATED VOICE"; render();
@@ -966,7 +1020,20 @@ try {
  }
  function update() {
   var now = getTime();
+  // Some device audio paths omit the completion callback. Never let a stale
+  // playback flag permanently silence subsequent voice commands.
+  if (speechActive && speechStartedAt >= 0 && now-speechStartedAt > 15) {
+   speechActive = false; speechStartedAt = -1; lastSpeechAt = now-1;
+   print("SECOND CHANCE voice playback gate recovered after timeout");
+  }
+  if (aiAudioProbeAt > 0 && now >= aiAudioProbeAt) {
+   aiAudioProbeAt = -1;
+   print("SECOND CHANCE audio after 0.5s: playing=" + aiAudio.isPlaying() +
+    " position=" + aiAudio.position + " duration=" + aiAudio.duration +
+    " volume=" + aiAudio.volume);
+  }
   if (callTarget && now-lastCallTargetAt>0.25) {callTarget=false;render();}
+  if (mapTarget && now-lastMapTargetAt>0.25) {mapTarget=false;render();}
   if (callPanel && callPanel.stage==="ringing" && now>=callPanel.connectAt) {
    callPanel.stage="connected";callPanel.connectAt=-1;
    callPanel.ack="Training dispatcher only.";
@@ -1003,6 +1070,7 @@ try {
  }
  function pinch() {
   if (callPanel) {selectCallPanel();return;}
+  if (current==="home" && mapTarget) {openResponderMap();return;}
   if (callTarget && (current==="safety" || current==="call"))
    {openCallPanel();return;}
   if (current === "safety" && !overlay) { assess(true); return; }
@@ -1026,14 +1094,85 @@ try {
   }
   return null;
  }
+ function requestPhoneCall() {
+  if (!accepted()) return;
+  if (global.secondChanceClearEquipment) global.secondChanceClearEquipment();
+  if (current==="hands") clearPlacement();
+  if (current==="aedPads") clearPads();
+  callPanel=null; overlay="phone";
+  phoneView=["IPHONE / CALL REQUEST","call",
+   ["Calling requires the", "companion iPhone app", "and phone confirmation."],
+   "NO CALL HAS BEEN PLACED"];
+  render();
+   if (!internetModule || !script.aiBaseUrl) {
+    phoneView[2]=["Open Second Chance Phone", "on your iPhone and start", "its local bridge."];
+    phoneView[3]="LOCAL BRIDGE UNAVAILABLE";
+    render();
+    print("SECOND CHANCE iPhone call request blocked: no network bridge");
+    return;
+   }
+   phoneView[3]="SENDING REQUEST TO MAC"; render();
+   var localUrl=String(script.aiBaseUrl).replace(/\/$/,"")+"/api/phone/request";
+   try {
+    internetModule.fetch(new Request(localUrl,{method:"POST"})).then(function(response) {
+     if (response.status!==200) throw new Error("Bridge HTTP " + response.status);
+     if (overlay!=="phone") return;
+     phoneView[2]=["Request reached your Mac.","Open Second Chance Phone","and confirm on iPhone."];
+     phoneView[3]="CHECK IPHONE / NO CALL YET"; render();
+     print("SECOND CHANCE local phone request delivered to Mac");
+    }).catch(function(error) {
+     if (overlay!=="phone") return;
+     phoneView[3]="MAC BRIDGE UNAVAILABLE"; render();
+     print("SECOND CHANCE local phone request failed: " + error);
+    });
+   } catch (error) {
+    phoneView[3]="MAC BRIDGE UNAVAILABLE"; render();
+    print("SECOND CHANCE local phone request failed: " + error);
+   }
+ }
  function onVoiceText(eventArgs) {
-  if (!eventArgs.isFinal || !eventArgs.text) return;
-  if (speechActive || getTime()-lastSpeechAt<0.75) return;
+  if (!eventArgs.text) return;
+  lastAsrUpdateAt=getTime();
+  if (voiceFailure) {voiceFailure=null;render();}
+  if (!eventArgs.isFinal) {
+   if (lastAsrUpdateAt-lastAsrPartialLogAt>2) {
+    lastAsrPartialLogAt=lastAsrUpdateAt;
+    print("SECOND CHANCE ASR partial: " + String(eventArgs.text).slice(0,80));
+   }
+   return;
+  }
   var spoken = eventArgs.text.toLowerCase().replace(/[.,!?，。！？]/g," ").trim();
   var command = spoken.replace(/\s/g,"");
   print("SECOND CHANCE ASR heard: " + spoken.slice(0,100));
-  var findMatch=/\b(?:find|locate|look for)\b(?:\s+\w+){0,4}\s+(tourniquet|gauze|epinephrine(?: auto[ -]?injector)?|aed trainer)\b/.exec(spoken);
-  if (findMatch) {findEquipment(findMatch[1]);return;}
+  if (speechActive || getTime()-lastSpeechAt<0.75) {
+   print("SECOND CHANCE ASR ignored during voice playback cooldown");
+   return;
+  }
+  if (/\b(find|locate|where|show)\b.*\b(cpr responders?|trained responders?|first aid responders?|volunteers?)\b/.test(spoken))
+   {openResponderMap();return;}
+  if (/^(call my contact|call test number|call the test number|dial my contact|phone my contact)$/.test(spoken))
+   {requestPhoneCall();return;}
+  // Spectacles ASR has transcribed "gauze" as "goat" and "goats" on device.
+  // Also accept a short item-only reply when ASR drops the word "find".
+  var equipmentNames="tourniquet|gauze dressing|gauzes?|gause|gauz|goats?|gods|gauge|dressing|bandage|epinephrine(?: auto[ -]?injector)?|aed trainer";
+  var findMatch=new RegExp("\\b(?:find|locate|look for)\\b(?:\\s+\\w+){0,4}\\s+("+equipmentNames+")\\b").exec(spoken) ||
+   new RegExp("^(?:the\\s+)?("+equipmentNames+")$").exec(spoken);
+  if (findMatch) {
+   var foundName=findMatch[1];
+   findEquipment(/^(?:gauze|gauzes|gause|gauz|goats?|gods|gauge|gauze dressing|dressing|bandage)$/.test(foundName) ?
+    "gauze" : foundName);
+   return;
+  }
+  if (/\b(?:find|locate|look for)\b/.test(spoken) && !/\baed\b/.test(spoken)) {
+   if (accepted()) {
+    overlay="vision"; visionFound=false;
+    visionView=aiCard("FIND / SAY ITEM AGAIN","check",
+     ["I heard: " + spoken.slice(0,18),"Say FIND THE DRESSING","or FIND THE GAUZE."],
+     "NO IMAGE CAPTURED");
+    transitionAt=getTime();render();
+   }
+   return;
+  }
   var aiQuestion = /^(?:(?:ask|hey)\s+(?:the\s+)?(?:a\s*i|a\s*eye|artificial intelligence)|ai question|问ai|问一下ai|问人工智能)\s*(.*)$/.exec(spoken);
   if (aiQuestion) { askAi(aiQuestion[1]); return; }
   if (awaitingAiQuestion && !/^(back|return|cancel|stop|返回|取消)$/.test(command)) {
@@ -1056,7 +1195,8 @@ try {
   if (/^(back|return|返回|回去)$/.test(command)) {
    if (!accepted()) return;
    if (overlay) show(current);
-   else if (current === "navStart" || current === "navHall" || current === "navCabinet" || current === "help") show(returnScreen);
+   else if (current === "navStart" || current === "navHall" ||
+    current === "navCabinet" || current === "responderMap" || current === "help") show(returnScreen);
    return;
   }
   if (/(start emergency|emergency mode|begin training|start cpr|启动急救|开始急救)/.test(spoken) ||
@@ -1098,6 +1238,7 @@ try {
   script.api.practiceSample=function(sample,at) {practiceSample(sample,at);};
   script.api.placementSample=function(samples,at) {placementSample(samples,at);};
   script.api.padSample=function(samples,at) {padSample(samples,at);};
+  script.api.openResponderMap=openResponderMap;
   try { script.createEvent("KeyPressEvent").bind(function(event) {
    if (event.key===Keys.N) pinch();
    else if (event.key===Keys.C) openCallPanel();
@@ -1154,6 +1295,7 @@ try {
    handsReady=true;
    print("SECOND CHANCE world-space palm and wrist tracking ready");
   } catch(handError) {print("SECOND CHANCE hand tracking unavailable: " + handError);}
+  print("SECOND CHANCE local iPhone bridge selected; no pairing session");
  }
  try {
   var gestures = require("LensStudio:GestureModule");
@@ -1164,13 +1306,30 @@ try {
   print("SECOND CHANCE pinch controls ready");
  } catch (gestureError) { print("SECOND CHANCE pinch controls unavailable: " + gestureError); }
  try {
-  var asr = require("LensStudio:AsrModule");
-  var options = AsrModule.AsrTranscriptionOptions.create();
-  options.silenceUntilTerminationMs = 650;
-  options.mode = AsrModule.AsrMode.Balanced;
-  options.onTranscriptionUpdateEvent.add(onVoiceText);
-  options.onTranscriptionErrorEvent.add(function(code) { print("SECOND CHANCE voice unavailable, code " + code); });
-  asr.startTranscribing(options);
+  if (!editorMode && global.deviceInfoSystem.isInternetAvailable) {
+   voiceInternetAvailable=global.deviceInfoSystem.isInternetAvailable();
+   print("SECOND CHANCE internet available: " + voiceInternetAvailable);
+   global.deviceInfoSystem.onInternetStatusChanged.add(function(status) {
+    voiceInternetAvailable=!!status.isInternetAvailable;
+    print("SECOND CHANCE internet changed: " + voiceInternetAvailable);
+    render();
+   });
+   render();
+  }
+  asrModule = require("LensStudio:AsrModule");
+  asrOptions = AsrModule.AsrTranscriptionOptions.create();
+  asrOptions.silenceUntilTerminationMs = 1000;
+  asrOptions.mode = AsrModule.AsrMode.HighAccuracy;
+  asrOptions.onTranscriptionUpdateEvent.add(onVoiceText);
+  asrOptions.onTranscriptionErrorEvent.add(function(code) {
+   voiceFailure=code===AsrModule.AsrStatusCode.Unauthenticated ?
+    "Unauthenticated" : code===AsrModule.AsrStatusCode.NoInternet ?
+    "NoInternet" : "InternalError";
+   if (voiceFailure==="NoInternet") voiceInternetAvailable=false;
+   print("SECOND CHANCE voice unavailable: " + voiceFailure + " (" + code + ")");
+   render();
+  });
+  asrModule.startTranscribing(asrOptions);
   print("SECOND CHANCE voice session started");
  } catch (voiceError) { print("SECOND CHANCE voice unavailable: " + voiceError); }
 } catch (error) { print("SECOND CHANCE setup failed: " + error); }

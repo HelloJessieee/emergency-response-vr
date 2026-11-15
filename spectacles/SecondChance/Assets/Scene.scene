@@ -196,7 +196,18 @@
       compressUpTexture: !<reference.Texture> 9565470b-53d8-464f-a05a-256b0893628c
       compressDownTexture: !<reference.Texture> 3d866c4a-ab27-4084-b2fe-c8fd26d10fff
       aedTexture: !<reference.Texture> c5cdf310-f5d3-45ab-a136-b11780e14e6d
+      responderMapTexture: !<reference.Texture> 1e62d8e8-5dbf-4115-9f2f-ccff3617fa9c
       aiBaseUrl: "http://127.0.0.1:4173"
+      voiceRate: !<reference.AudioTrackAsset> 39efe392-5ffc-449e-acaa-74c3ac9a102f
+      voiceDepth: !<reference.AudioTrackAsset> 5ba8ed7b-65aa-4b99-ab13-1daa56d5f965
+      voiceHands: !<reference.AudioTrackAsset> c788d60e-4c0f-48e6-b0a7-8ac09e583f00
+      voiceAed: !<reference.AudioTrackAsset> e4998f72-fc2d-4b05-b58a-9745acf84391
+      voiceBreathing: !<reference.AudioTrackAsset> 3a14aa58-f2d7-4549-9ddb-1aa61c5fa927
+      voiceCall: !<reference.AudioTrackAsset> a7a733c4-480c-432f-a0bc-3addf2d54941
+      voiceBreaths: !<reference.AudioTrackAsset> 48a8381f-4f82-493c-8c2c-cf02894592e4
+      voiceTeam: !<reference.AudioTrackAsset> c9d12492-1592-4013-aecc-386259195aad
+      voiceOverview: !<reference.AudioTrackAsset> cfc48a66-773b-470f-a54d-6f0c03d43497
+      voiceScope: !<reference.AudioTrackAsset> 4084cc7b-b34e-43c6-85db-518dcf75e4ea
       placementEnterRadiusCm: !<float> 6.000000
       placementExitRadiusCm: !<float> 8.000000
       placementDepthCm: !<float> 5.000000
@@ -239,7 +250,6 @@
   ScriptAsset: !<reference> e32b1985-fa17-4993-aff1-d572297cb3a1
   ScriptInputsDefault:
     mockVisionForTraining: true
-    useOwnAsr: true
     maxPairAgeSeconds: true
     maxFrameDeltaSeconds: true
   ScriptTypesDefault:
@@ -250,7 +260,6 @@
       cameraModule: !<reference.CameraModule> 438b0c6e-8b21-42d3-b557-80e0c6c58379
       gatewayBaseUrl: "http://127.0.0.1:4173"
       mockVisionForTraining: false
-      useOwnAsr: false
       maxPairAgeSeconds: 0.500000
       maxFrameDeltaSeconds: 0.070000
   ScriptTypes:

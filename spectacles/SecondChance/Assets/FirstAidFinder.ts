@@ -29,13 +29,11 @@ export class FirstAidFinder extends BaseScriptComponent {
   @input cameraModule: CameraModule;
   @input gatewayBaseUrl: string = 'http://127.0.0.1:4173';
   @input mockVisionForTraining: boolean = false;
-  @input useOwnAsr: boolean = false;
   @input maxPairAgeSeconds: number = 0.5;
   @input maxFrameDeltaSeconds: number = 0.07;
 
   private depthModule: DepthModule | null = null;
   private internetModule: InternetModule | null = null;
-  private asrModule: AsrModule | null = null;
   private cameraTexture: Texture | null = null;
   private colorCamera: DeviceCamera | null = null;
   private depthSession: DepthFrameSession | null = null;
@@ -145,37 +143,10 @@ export class FirstAidFinder extends BaseScriptComponent {
       return;
     }
 
-    // SecondChanceDisplay owns the one ASR session and calls the registered
-    // function after a finalized "Find the ..." command.
+    // SecondChanceDisplay owns the only ASR session and forwards finalized
+    // "Find the ..." commands. Starting another session cancels the first.
     try { this.internetModule = require('LensStudio:InternetModule'); }
     catch (error) { print('[FirstAidFinder] Internet unavailable: ' + error); }
-    if (this.useOwnAsr) {
-      try {
-        // Standalone scenes may own ASR. The integrated CPR scene leaves this
-        // off and forwards finalized speech from SecondChanceDisplay instead.
-        this.asrModule = require('LensStudio:AsrModule');
-        const options = AsrModule.AsrTranscriptionOptions.create();
-        options.silenceUntilTerminationMs = 650;
-        options.mode = AsrModule.AsrMode.Balanced;
-        options.onTranscriptionUpdateEvent.add((event: AsrModule.TranscriptionUpdateEvent) => {
-          if (!event.isFinal || !event.text) return;
-          const match = /^\s*find\s+(?:the\s+|my\s+|a\s+)?([a-z][a-z\s-]{1,38})[.!?]?\s*$/i.exec(event.text);
-          if (match) void this.findItem(match[1].trim().toLowerCase());
-        });
-        options.onTranscriptionErrorEvent.add((code: AsrModule.AsrStatusCode) => {
-          if (code === AsrModule.AsrStatusCode.Unauthenticated)
-            this.setStatus('Sign in to enable speech recognition.');
-          else if (code === AsrModule.AsrStatusCode.NoInternet)
-            this.setStatus('Speech recognition needs internet.');
-          else this.setStatus('Speech recognition unavailable.');
-          print('[FirstAidFinder] ASR error: ' + code);
-        });
-        this.asrModule.startTranscribing(options);
-      } catch (error) {
-        this.setStatus('Microphone or ASR unavailable.');
-        print('[FirstAidFinder] ASR start failed: ' + error);
-      }
-    }
   }
 
   private onDepthFrame(frame: DepthFrameData): void {
@@ -383,9 +354,6 @@ export class FirstAidFinder extends BaseScriptComponent {
       (global as any).secondChanceFindEquipment = null;
     if ((global as any).secondChanceClearEquipment)
       (global as any).secondChanceClearEquipment = null;
-    if (this.asrModule) {
-      try { void this.asrModule.stopTranscribing(); } catch (_) {}
-    }
     if (this.depthSession) {
       if (this.depthRegistration)
         this.depthSession.onNewFrame.remove(this.depthRegistration);

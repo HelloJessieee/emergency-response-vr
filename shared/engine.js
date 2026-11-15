@@ -18,6 +18,13 @@ export const TASKS = Object.freeze([
   { id: "aed", title: "Retrieve AED trainer", role: "AED runner" }
 ]);
 
+// Fixed training fixtures. These are not people, live locations, or a dispatch service.
+export const SIMULATED_RESPONDERS = Object.freeze([
+  { id: "morgan", name: "Morgan Lee", role: "CPR-trained volunteer", distance: "120 m", etaMinutes: 2, x: 26, y: 31, skills: ["cpr", "call"] },
+  { id: "sam", name: "Sam Rivera", role: "AED runner", distance: "240 m", etaMinutes: 4, x: 78, y: 25, skills: ["aed", "call"] },
+  { id: "alex", name: "Alex Chen", role: "First-aid volunteer", distance: "390 m", etaMinutes: 6, x: 76, y: 77, skills: ["cpr", "aed", "call"] }
+]);
+
 export function createInitialState(sessionId = "demo") {
   return {
     sessionId,
@@ -30,6 +37,7 @@ export function createInitialState(sessionId = "demo") {
     aed: { arrived: false, step: -1, complete: false },
     participants: [],
     assignments: { call: null, cpr: null, aed: null },
+    responders: Object.fromEntries(SIMULATED_RESPONDERS.map(responder => [responder.id, { status: "available", taskId: null, requestedAt: null, arrivedAt: null }])),
     events: []
   };
 }
@@ -149,6 +157,26 @@ export function reduceEvent(previous, event) {
       state.assignments[payload.taskId] = payload.participantId;
       description = `${TASKS.find(t => t.id === payload.taskId).title} assignment updated`;
       break;
+    case "RESPONDER_REQUEST": {
+      requireActive(state);
+      const responder = SIMULATED_RESPONDERS.find(item => item.id === payload.id);
+      if (!responder) throw new Error("Unknown simulated responder.");
+      if (!responder.skills.includes(payload.taskId)) throw new Error("This responder is not assigned that training skill.");
+      if (state.responders[responder.id].status !== "available") throw new Error("This simulated responder is already requested.");
+      state.responders[responder.id] = { status: "enroute", taskId: payload.taskId, requestedAt: Date.now(), arrivedAt: null };
+      description = `Simulated request sent to ${responder.name} for ${TASKS.find(task => task.id === payload.taskId).title}`;
+      break;
+    }
+    case "RESPONDER_ARRIVE": {
+      requireActive(state);
+      const responder = SIMULATED_RESPONDERS.find(item => item.id === payload.id);
+      if (!responder) throw new Error("Unknown simulated responder.");
+      if (state.responders[responder.id].status !== "enroute") throw new Error("Request this simulated responder first.");
+      state.responders[responder.id].status = "onscene";
+      state.responders[responder.id].arrivedAt = Date.now();
+      description = `${responder.name} marked on scene in simulation`;
+      break;
+    }
     case "RESET":
       return createInitialState(previous.sessionId);
     default:

@@ -1,4 +1,4 @@
-import { AED_LOCATIONS, AED_STEPS, TASKS, getPracticeRate } from '/shared/engine.js';
+import { AED_LOCATIONS, AED_STEPS, TASKS, SIMULATED_RESPONDERS, getPracticeRate } from '/shared/engine.js';
 
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -11,7 +11,9 @@ const participantName = sessionStorage.getItem('secondChanceName') || 'Rescuer '
 sessionStorage.setItem('secondChanceName', participantName);
 let state = null, socket = null, view = 'overview', toastTimer = null, lastAssistantRevision = null, assistantBusy = false;
 let lastAssistantQuestion = '', mediaReady = false, recording = null;
-const tabs = [['overview','01 OVERVIEW'],['aed','02 AED MAP'],['cpr','03 CPR COACH'],['trainer','04 AED TRAINER'],['team','05 TEAM']];
+const tabs = [['overview','01 OVERVIEW'],['responders','02 RESPONDERS'],['aed','03 AED MAP'],['cpr','04 CPR COACH'],['trainer','05 AED TRAINER'],['team','06 TEAM']];
+const responderState = (s, id) => s.responders?.[id] || { status: 'available', taskId: null };
+const responderStatus = status => ({ available: 'AVAILABLE', enroute: 'EN ROUTE', onscene: 'ON SCENE' })[status] || 'AVAILABLE';
 
 function toast(message) {
   $('toast').textContent = message;
@@ -53,6 +55,7 @@ function renderWorkflow(s) {
     ['Activate','Start training response',s.activated],
     ['Assess','Record observations',s.assessment.responsive !== null],
     ['Call','Mock dispatcher',s.call === 'connected'],
+    ['Find help','Simulated nearby responders',Object.values(s.responders || {}).some(r => r.status !== 'available')],
     ['Locate AED','Fictional training map',!!s.selectedAed],
     ['Coach CPR','Practice rhythm',s.cpr.started || s.aed.arrived],
     ['AED trainer','Follow device prompts',s.aed.complete]
@@ -70,6 +73,22 @@ function renderViewport(s) {
     subtitle = s.activated ? 'Confirm observations, contact the mock dispatcher, and assign the next action.' : 'Activate emergency training mode to begin.';
     context = s.activated ? 'RESPONSE' : 'STANDBY';
     content = frame('SITUATION / DEMO CENTER','VIEW 01','<div class="scene-center"><div class="reticle ' + (s.activated ? '' : 'idle') + '"><strong>+</strong></div><h2>' + (s.activated ? 'Emergency mode active' : 'Ready to practice a response?') + '</h2><p>' + (s.activated ? 'Check responsiveness and normal breathing. The software does not diagnose.' : 'Work through a guided mannequin scenario with simulated equipment.') + '</p>' + (s.activated ? '<span class="scene-pill">RESPONSE STARTED</span>' : '<button class="scene-start" data-action="activate">Start training response <span aria-hidden="true">↗</span></button>') + '</div>' + (s.call === 'connected' ? '<div class="scene-call">● MOCK DISPATCHER CONNECTED<small>No emergency number dialed</small></div>' : ''),'NO LIVE EMERGENCY CALL');
+  } else if (view === 'responders') {
+    const enroute = SIMULATED_RESPONDERS.filter(r => responderState(s, r.id).status === 'enroute');
+    const onscene = SIMULATED_RESPONDERS.filter(r => responderState(s, r.id).status === 'onscene');
+    title = onscene.length ? 'Help is on scene.' : enroute.length ? 'Responders are on the way.' : 'Nearby help, in simulation.';
+    subtitle = 'Explore a fictional local network, choose a training task, and simulate arrival.';
+    context = 'RESPONDERS';
+    const routes = enroute.map(r => '<line x1="50" y1="53" x2="' + r.x + '" y2="' + r.y + '"></line>').join('');
+    const markers = SIMULATED_RESPONDERS.map((r, index) => {
+      const status = responderState(s, r.id).status;
+      const x = status === 'onscene' ? 38 + index * 12 : r.x;
+      const y = status === 'onscene' ? 41 : r.y;
+      return '<button class="responder-pin ' + status + '" style="left:' + x + '%;top:' + y + '%" data-action="focus-responder" data-id="' + r.id + '" aria-label="' + esc(r.name + ', ' + responderStatus(status) + (status === 'available' ? ', ' + r.distance : '')) + '"><span class="pin-icon">' + esc(r.name.split(' ').map(part => part[0]).join('')) + '</span><span class="pin-label"><strong>' + esc(r.name) + '</strong><small>' + esc(status === 'available' ? r.distance + ' · ' + r.etaMinutes + ' min' : responderStatus(status)) + '</small></span></button>';
+    }).join('');
+    content = frame('RESPONDERS / FICTIONAL NETWORK','3 TRAINING PROFILES',
+      '<div class="responder-map"><div class="responder-map-grid" aria-hidden="true"></div><span class="responder-map-caption">DEMO DISTANCES · NO GPS OR LIVE DISPATCH</span><svg class="responder-routes" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">' + routes + '</svg><div class="responder-origin"><span>+</span><small>SCENE</small></div>' + markers + '<div class="responder-legend"><span><i class="legend-dot available"></i> Available</span><span><i class="legend-dot enroute"></i> En route</span><span><i class="legend-dot onscene"></i> On scene</span></div></div>',
+      'ALL PEOPLE, DISTANCES AND ETAS ARE SIMULATED');
   } else if (view === 'aed') {
     title = selected ? 'Guide the AED runner.' : 'Locate a training AED.';
     subtitle = selected ? selected.route : 'Choose one fictional AED trainer location on the demo map.';
@@ -109,7 +128,7 @@ function panelOverview(s) {
     card('03 / MOCK CALL','Contact dispatcher','This connects to a fictional dispatcher. It never dials 911.',
       s.call === 'connected' ? '<span class="status-chip good">● Mock dispatcher connected</span>' : '<button class="secondary" data-action="call-request" ' + (!s.activated ? 'disabled' : '') + '>Connect mock dispatcher ↗</button>') +
     card('NEXT / ACTIONS','Keep moving','Calling, AED retrieval, and CPR training can be coordinated in parallel.',
-      '<div class="button-row"><button class="secondary" data-view="aed">Find AED</button><button class="secondary" data-view="cpr">CPR coach</button></div>');
+      '<div class="button-row"><button class="secondary" data-view="responders">Nearby responders</button><button class="secondary" data-view="aed">Find AED</button></div>');
 }
 function panelAed(s) {
   const selected = AED_LOCATIONS.find(a => a.id === s.selectedAed);
@@ -118,6 +137,18 @@ function panelAed(s) {
     (selected ? '<div class="tiny-note">ROUTE · ' + esc(selected.route) + '</div>' : '')) +
     card('DEVICE ARRIVAL','Trainer on scene?','Confirm when a physical AED training device is brought to the mannequin.',
       s.aed.arrived ? '<span class="status-chip good">● Trainer arrived</span>' : '<button class="primary" data-action="trainer-arrived" ' + (!selected ? 'disabled' : '') + '>Mark trainer arrived →</button>');
+}
+function panelResponders(s) {
+  const requested = SIMULATED_RESPONDERS.filter(r => responderState(s, r.id).status !== 'available').length;
+  return card('NEARBY / SIMULATED', 'Responder network', 'Three fictional profiles near the demo scene. Requests and arrivals change this training session only.',
+    '<div class="responder-summary"><strong>' + SIMULATED_RESPONDERS.length + '</strong><span>shown nearby</span><strong>' + requested + '</strong><span>requested or arrived</span></div>' +
+    SIMULATED_RESPONDERS.map(r => {
+      const current = responderState(s, r.id);
+      const task = TASKS.find(item => item.id === current.taskId);
+      return '<div class="responder-card" id="responder-' + r.id + '"><div class="responder-card-head"><span class="responder-avatar">' + esc(r.name.split(' ').map(part => part[0]).join('')) + '</span><span class="responder-name"><strong>' + esc(r.name) + '</strong><small>' + esc(r.role) + '</small></span><span class="responder-status ' + current.status + '">' + responderStatus(current.status) + '</span></div><div class="responder-facts"><span>' + esc(current.status === 'onscene' ? 'At demo scene' : r.distance + ' away') + '</span><span>' + esc(current.status === 'onscene' ? 'Arrival confirmed in simulation' : '~' + r.etaMinutes + ' min demo ETA') + '</span></div>' +
+        (current.status === 'available' ? '<label class="field-label" for="task-' + r.id + '">Training task</label><select class="field-select" id="task-' + r.id + '" data-responder-task="' + r.id + '">' + r.skills.map(skill => '<option value="' + skill + '">' + esc(TASKS.find(item => item.id === skill).title) + '</option>').join('') + '</select><button class="primary responder-action" data-action="request-responder" data-id="' + r.id + '" ' + (!s.activated ? 'disabled' : '') + '>Simulate request →</button>' :
+          '<div class="responder-task">' + esc(task?.title || 'Training task') + '</div>' + (current.status === 'enroute' ? '<button class="secondary responder-action" data-action="responder-arrive" data-id="' + r.id + '">Simulate arrival →</button>' : '<span class="status-chip good">● On scene in demo</span>')) + '</div>';
+    }).join('') + '<div class="tiny-note">This map cannot find, contact, or dispatch real responders. Arrival is manually simulated.</div>');
 }
 function panelCpr(s) {
   const ready = s.assessment.responsive === false && s.assessment.breathingNormally === false;
@@ -156,7 +187,7 @@ function render() {
   $('view-tabs').innerHTML = tabs.map(item => '<button class="view-tab ' + (view === item[0] ? 'active' : '') + '" data-view="' + item[0] + '">' + item[1] + '</button>').join('');
   renderWorkflow(state);
   renderViewport(state);
-  $('panel').innerHTML = view === 'overview' ? panelOverview(state) : view === 'aed' ? panelAed(state) : view === 'cpr' ? panelCpr(state) : view === 'trainer' ? panelTrainer(state) : panelTeam(state);
+  $('panel').innerHTML = view === 'overview' ? panelOverview(state) : view === 'responders' ? panelResponders(state) : view === 'aed' ? panelAed(state) : view === 'cpr' ? panelCpr(state) : view === 'trainer' ? panelTrainer(state) : panelTeam(state);
   $('modal-root').innerHTML = state.call === 'confirming' ? '<div class="modal-backdrop"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><div class="card-kicker orange">SIMULATION ONLY</div><h2 id="modal-title">Connect mock dispatcher?</h2><p>This connects a fictional training dispatcher in this browser session.</p><div class="modal-warning">No real emergency number will be dialed.</div><div class="button-row"><button class="primary" data-action="call-confirm">Connect simulation</button><button class="secondary" data-action="call-cancel">Cancel</button></div></div></div>' : '';
 }
 document.addEventListener('click', event => {
@@ -172,6 +203,9 @@ document.addEventListener('click', event => {
   if (action === 'call-confirm') send('CALL_CONFIRM');
   if (action === 'call-cancel') send('CALL_CANCEL');
   if (action === 'select-aed') send('AED_SELECT',{id:button.dataset.id});
+  if (action === 'focus-responder') document.getElementById('responder-' + button.dataset.id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  if (action === 'request-responder') send('RESPONDER_REQUEST',{id:button.dataset.id,taskId:document.getElementById('task-' + button.dataset.id)?.value});
+  if (action === 'responder-arrive') send('RESPONDER_ARRIVE',{id:button.dataset.id});
   if (action === 'start-cpr') send('CPR_START');
   if (action === 'stop-cpr') send('CPR_STOP');
   if (action === 'tap') send('CPR_TAP',{at:Date.now()});

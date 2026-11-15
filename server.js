@@ -16,6 +16,10 @@ const sessions = new Map();
 const types = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".svg": "image/svg+xml" };
 const assistantRequests = new Map();
 const mediaRequests = new Map();
+// Local demonstration bridge. It carries only a request counter; the destination
+// number stays on the iPhone and iOS still requires the wearer to confirm.
+let phoneRequestId = 0;
+let phoneRequestAt = 0;
 
 function json(response, status, body) {
   response.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
@@ -79,6 +83,21 @@ const server = http.createServer(async (request, response) => {
   if (url.pathname.startsWith('/api/lens/'))
     console.info(`[Lens gateway] ${request.method} ${url.pathname} from ${request.socket.remoteAddress || 'unknown'}`);
   if (url.pathname.startsWith('/api/') && !sameOrigin(request, url)) return json(response, 403, { error: 'Origin not allowed.' });
+  if (url.pathname === '/api/phone/request') {
+    if (request.method !== 'POST') return json(response, 405, { error: 'POST required.' });
+    const address = request.socket.remoteAddress || '';
+    if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(address))
+      return json(response, 403, { error: 'Local Lens request required.' });
+    if (limited(request, 'phone-request', 3)) return json(response, 429, { error: 'Try again in a minute.' });
+    phoneRequestId += 1;
+    phoneRequestAt = Date.now();
+    console.info(`[Phone bridge] demo call request ${phoneRequestId}`);
+    return json(response, 200, { received: true, requestId: phoneRequestId });
+  }
+  if (url.pathname === '/api/phone/state') {
+    if (request.method !== 'GET') return json(response, 405, { error: 'GET required.' });
+    return json(response, 200, { requestId: phoneRequestId, requestedAt: phoneRequestAt });
+  }
   if (url.pathname === '/api/ai-status') return json(response, 200, { enabled: aiAvailable(request) });
   if (url.pathname === '/api/lens/ask') {
     if (request.method !== 'POST') return json(response, 405, { error: 'POST required.' });

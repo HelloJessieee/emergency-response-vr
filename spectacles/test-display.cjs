@@ -8,11 +8,23 @@ const source = fs.readFileSync(path.join(root, 'SecondChanceDisplay.js'), 'utf8'
 const scene = fs.readFileSync(path.join(root, 'Scene.scene'), 'utf8');
 const scriptMeta = fs.readFileSync(path.join(root, 'SecondChanceDisplay.js.meta'), 'utf8');
 const textureNames = ['checkTexture','callTexture','callAedTexture','handsTexture',
-    'compressUpTexture','compressDownTexture','aedTexture'];
+    'compressUpTexture','compressDownTexture','aedTexture','responderMapTexture'];
 const textures = Object.fromEntries(textureNames.map(name => [name,{name}]));
 for (const name of textureNames) {
     assert.match(source,new RegExp(`@input Asset\\.Texture ${name}`));
     assert.match(scene,new RegExp(`${name}: !<reference\\.Texture> [0-9a-f-]+`));
+}
+// Imported voice assets must be referenced by the active scene. A file on disk
+// alone is not packaged into a Lens unless a scene component owns the asset.
+for (const [topic,input] of Object.entries({rate:'voiceRate',depth:'voiceDepth',
+    hands:'voiceHands',aed:'voiceAed',breathing:'voiceBreathing',call:'voiceCall',
+    breaths:'voiceBreaths',team:'voiceTeam',overview:'voiceOverview',scope:'voiceScope'})) {
+    const meta=fs.readFileSync(path.join(root,'Voice',topic+'.mp3.meta'),'utf8');
+    const match=meta.match(/FileAudioTrack: !<reference> ([0-9a-f-]+)/);
+    assert.ok(match,`missing imported audio track: ${topic}`);
+    assert.match(source,new RegExp(`@input Asset\\.AudioTrackAsset ${input}`));
+    assert.ok(scene.includes(`${input}: !<reference.AudioTrackAsset> ${match[1]}`),
+        `voice not wired to scene: ${topic}`);
 }
 assert.match(scene,/Name: SecondChanceDisplay[\s\S]*ScriptAsset:/);
 assert.match(scene,/Name: FirstAidFinder[\s\S]*ScriptAsset: !<reference> e32b1985-fa17-4993-aff1-d572297cb3a1/);
@@ -69,7 +81,7 @@ const context = {
     AsrModule:{AsrTranscriptionOptions:{create:()=>({
         onTranscriptionUpdateEvent:{add:fn=>voiceUpdates.push(fn)},
         onTranscriptionErrorEvent:{add(){}}
-    })},AsrMode:{Balanced:1}},
+    })},AsrMode:{HighAccuracy:2}},
     require:id=>id==='LensStudio:AsrModule' ?
         {startTranscribing(){asrStarted=true;}} :
         (()=>{throw Error('wearable gesture API unavailable in Preview');})()
@@ -277,7 +289,32 @@ assert.equal(objects.get('SC Illustrated Practice Card').enabled,false);
 voice(61,'Back');
 assert.match(card.text,/07 \/ COMPRESS/);
 assert.equal(objects.get('SC Illustrated Practice Card').enabled,true);
+voice(61.6,'Find the goat');
+assert.equal(requestedItem,'gauze');
+assert.match(card.text,/FIND \/ CAPTURING/);
+voice(62.2,'Back');
+assert.match(card.text,/07 \/ COMPRESS/);
+voice(62.8,'Find the dressing');
+assert.equal(requestedItem,'gauze');
+assert.match(card.text,/FIND \/ CAPTURING/);
+voice(63.4,'Back');
+assert.match(card.text,/07 \/ COMPRESS/);
 assert.ok(markerCleared>0);
+voice(64,'Locate CPR responder nearby');
+assert.match(card.text,/CPR RESPONDER \/ SIM/);
+assert.match(card.text,/SIM ONLY \/ NO LIVE POSITION/);
+assert.equal(art.backgroundSettings.fill.texture.name,'responderMapTexture');
+voice(65,'Back');
+assert.match(card.text,/07 \/ COMPRESS/);
+voice(66,'Dressing');
+assert.equal(requestedItem,'gauze');
+assert.match(card.text,/FIND \/ CAPTURING/);
+voice(67,'Back');
+voice(68,'Find supplies');
+assert.match(card.text,/FIND \/ SAY ITEM AGAIN/);
+assert.match(card.text,/NO IMAGE CAPTURED/);
+voice(69,'Back');
+assert.match(card.text,/07 \/ COMPRESS/);
 // Run the wearable input adapter against SIK-shaped hands, separate from the
 // editor injection above. The real headset still requires a manikin check.
 const wearableEvents={},wearablePinches=[],wearableTargets=[],wearableLogs=[];
@@ -385,6 +422,16 @@ assert.equal(wearablePadTarget.enabled,false);
 time=29;wearablePinches[0]();
 assert.match(wearableCard.text,/STAND CLEAR/);
 assert.equal(wearablePadA.enabled,false);
+time=30;voiceUpdates[1]({text:'Restart',isFinal:true});
+assert.match(wearableCard.text,/Aim at MAP \+ pinch/);
+time=30.5;wearableTargets[0]({isValid:true,
+    rayOriginInWorld:{x:0,y:0,z:0},
+    rayDirectionInWorld:{x:0,y:-0.2,z:-1}});
+assert.match(wearableCard.text,/> MAP \/ PINCH/);
+time=31;wearablePinches[0]();
+assert.match(wearableCard.text,/CPR RESPONDER \/ SIM/);
+time=32;wearablePinches[0]();
+assert.match(wearableCard.text,/SECOND CHANCE/);
 function checkRegion(region,number,expected,panelExpected) {
     const variantSource=source.replace(
         'regionLabel:"United States", emergencyNumber:"911"',
@@ -486,6 +533,14 @@ async function checkLensAi() {
     time=65;aiVoice[0]({text:'Ask A I how fast should I press?',isFinal:true});
     assert.match(aiCard.text,/CPR \/ PRESSING RATE/);
     assert.equal(JSON.parse(requests[3].options.body).question,'how fast should i press');
+    finishAudio();
+    time=67;aiVoice[0]({text:'Back',isFinal:true});
+    time=69;aiVoice[0]({text:'Call my contact',isFinal:true});
+    assert.equal(requests.at(-1).url,'https://example.test/api/phone/request');
+    assert.equal(requests.at(-1).options.method,'POST');
+    await new Promise(resolve=>setImmediate(resolve));
+    assert.match(aiCard.text,/CHECK IPHONE/);
+    assert.match(aiCard.text,/NO CALL YET/);
 }
 checkLensAi().then(()=>console.log('Native Lens flow, palm placement, practice motion, and AI network checks passed.'))
     .catch(error=>{console.error(error);process.exitCode=1;});

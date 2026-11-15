@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { AED_STEPS, createInitialState, getPracticeRate, reduceEvent } from "../shared/engine.js";
+import { AED_STEPS, SIMULATED_RESPONDERS, createInitialState, getPracticeRate, reduceEvent } from "../shared/engine.js";
 
 const apply = (state, type, payload) => reduceEvent(state, { type, payload, actor: "Test" });
 
@@ -68,4 +68,21 @@ test("rejoining a session refreshes the participant name", () => {
   state = apply(state, "PARTICIPANT_JOIN", { id: "a", name: "Lead rescuer" });
   assert.equal(state.participants.length, 1);
   assert.equal(state.participants[0].name, "Lead rescuer");
+});
+
+test("nearby responder simulation requests a compatible helper and records arrival", () => {
+  let state = createInitialState();
+  assert.equal(SIMULATED_RESPONDERS.length, 3);
+  assert.throws(() => apply(state, "RESPONDER_REQUEST", { id: "morgan", taskId: "cpr" }), /Activate/);
+  state = apply(state, "ACTIVATE");
+  assert.throws(() => apply(state, "RESPONDER_REQUEST", { id: "morgan", taskId: "aed" }), /not assigned/);
+  assert.throws(() => apply(state, "RESPONDER_REQUEST", { id: "unknown", taskId: "cpr" }), /Unknown simulated/);
+  state = apply(state, "RESPONDER_REQUEST", { id: "morgan", taskId: "cpr" });
+  assert.equal(state.responders.morgan.status, "enroute");
+  assert.equal(state.responders.morgan.taskId, "cpr");
+  assert.throws(() => apply(state, "RESPONDER_REQUEST", { id: "morgan", taskId: "cpr" }), /already requested/);
+  state = apply(state, "RESPONDER_ARRIVE", { id: "morgan" });
+  assert.equal(state.responders.morgan.status, "onscene");
+  assert.ok(state.responders.morgan.arrivedAt >= state.responders.morgan.requestedAt);
+  assert.equal(apply(state, "RESET").responders.morgan.status, "available");
 });
