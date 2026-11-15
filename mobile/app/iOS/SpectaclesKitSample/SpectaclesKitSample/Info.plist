@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDisplayName</key>
-	<string>Second Chance</string>
+	<string>Rescue Specs</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Connect to your Mac for a Second Chance training call request.</string>
+	<string>Connect to your Mac for a Rescue Specs training call request.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

@@ -32,7 +32,6 @@
     maxFrameDeltaSeconds: false
     maxPairAgeSeconds: false
     mockVisionForTraining: false
-    useOwnAsr: false
   ScriptTypesHidden:
     {}
   ReadMe: !<reference> 00000000-0000-0000-0000-000000000000
@@ -46,7 +45,6 @@
       cameraModule: !<reference.CameraModule> 00000000-0000-0000-0000-000000000000
       gatewayBaseUrl: "http://10.27.176.77:4173"
       mockVisionForTraining: false
-      useOwnAsr: false
       maxPairAgeSeconds: 0.500000
       maxFrameDeltaSeconds: 0.070000
   ScriptTypes:
@@ -57,6 +55,5 @@
     - // @input Asset.CameraModule cameraModule
     - '// @input string gatewayBaseUrl = "http://127.0.0.1:4173"'
     - // @input bool mockVisionForTraining
-    - // @input bool useOwnAsr
     - // @input float maxPairAgeSeconds = 0.5
     - // @input float maxFrameDeltaSeconds = 0.07

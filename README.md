@@ -1,4 +1,4 @@
-# RescueSpecs
+# Rescue Specs
 
 Browser based AR response simulator for a hackathon demonstration with CPR mannequins and AED trainers. This is **not a medical device** or a live emergency response service.
 
@@ -105,7 +105,7 @@ On the HAND POSITION lesson, flat **ghost hands** (two stacked palm-down hands w
 
 The `09 / AED PADS` lesson now has two virtual target rings and two pad graphics. A visible palm moves an unplaced pad continuously; holding it within the target's lateral and depth tolerances places it on that virtual target. Sustained tracking loss (over 0.25 s) hides a pad that has not been placed. A held pinch or “Next” advances. Desktop Preview can simulate hand movement with `J` (far), `K` (pad A target), `R` (pad B target), `O` (wrong depth), and `L` (tracking loss). These graphics and placement checks are training aids; they have not been calibrated to a physical manikin or verified on the headset. Follow the actual AED's pad diagram and prompts.
 
-Say **“Locate CPR responder nearby”** to open a fictional responder map on Spectacles, or aim at `MAP / CPR RESPONDER SIM` on the Lens home card and pinch. It shows YOU, Volunteer A, and a sample route labeled `SIM`; “Back” or pinch returns to the lesson. The map uses no GPS, live responder directory, notifications, or dispatch. The **Second Chance** iPhone app also opens directly to an independent **Responders** simulation with a MapKit street basemap, three fictional volunteers, a sample route, and manual `Simulate request` / `Simulate arrival` controls. It uses fixed demo coordinates, not the phone's location, and needs no Spectacles pairing. Map tiles may require internet access.
+Say **“Locate CPR responder nearby”** to open a fictional responder map on Spectacles, or aim at `MAP / CPR RESPONDER SIM` on the Lens home card and pinch. It shows YOU, Volunteer A, and a sample route labeled `SIM`; “Back” or pinch returns to the lesson. The map uses no GPS, live responder directory, notifications, or dispatch. The **Rescue Specs** iPhone app also opens directly to an independent **Responders** simulation with a MapKit street basemap, three fictional volunteers, a sample route, and manual `Simulate request` / `Simulate arrival` controls. It uses fixed demo coordinates, not the phone's location, and needs no Spectacles pairing. Map tiles may require internet access.
 
 For a **non-emergency outbound test call**, use the iPhone app's separate **Phone bridge** tab; the responder map needs no pairing. Keep `node server.js` running on this Mac and USB reverse port `4173` to Spectacles. On the same Wi-Fi network, enter the Mac address (currently `http://10.8.176.66:4173`) in the iPhone app and tap **Start local bridge**. Enter a non-emergency test number on the iPhone. Say **“Call my contact”** to the Lens; when the request reaches the phone, tap **Open iPhone call confirmation** and confirm in iOS. The number stays on the phone. The Lens knows only that the request reached the Mac, not whether a call connected. The current Lens uses the local bridge without Mobile Kit pairing. Mac-to-iPhone delivery has been seen on the phone, while the spoken Lens request is still being checked. The existing simulated call panel does not place a phone call.
 
@@ -128,3 +128,9 @@ printf '%s\n' \
 See [project.md](./project.md) for status and next steps.
 
 See [DEMO.md](./DEMO.md) for the timed six-reveal presentation script.
+
+## License
+
+Rescue Specs is released under the [MIT License](./LICENSE).
+
+Third-party code keeps its own terms. The Spectacles Interaction Kit package in `spectacles/SecondChance/Packages/` and the Spectacles Kit SDK and sample app in `mobile/` come from Specs Inc.; see [mobile/SNAP-SAMPLES-LICENSE.md](./mobile/SNAP-SAMPLES-LICENSE.md), which also points to the Specs Developer Terms and the Lens Studio License Agreement.

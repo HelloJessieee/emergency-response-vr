@@ -12,6 +12,6 @@ struct SessionView: View {
                 else { model.startSession(binding: bonding) }
             }
         }
-        .navigationTitle("Second Chance")
+        .navigationTitle("Rescue Specs")
     }
 }

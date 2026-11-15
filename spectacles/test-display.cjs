@@ -314,7 +314,7 @@ const sample = (t, x, y, z) => {
   check();
 };
 check();
-assert.match(card.text, /SECOND CHANCE/);
+assert.match(card.text, /RESCUE SPECS/);
 assert.equal(art.backgroundSettings.fill.texture.name, "checkTexture");
 pinch(1);
 assert.match(card.text, /SCENE SAFETY/);
@@ -444,7 +444,7 @@ assert.match(card.text, /RESUME CPR/);
 assert.match(card.text, /NEXT: BACK TO START/);
 // Screen 11 ends the lesson and returns to the start screen, not 07.
 pinch(18);
-assert.match(card.text, /SECOND CHANCE/);
+assert.match(card.text, /RESCUE SPECS/);
 assert.doesNotMatch(card.text, /07 \/ COMPRESS/);
 // The next run starts fresh from screen 01.
 pinch(18.5);
@@ -455,13 +455,13 @@ assert.match(card.text, /100-120 compressions\/min/);
 voice(20, "Back");
 assert.match(card.text, /01 \/ SCENE SAFETY/);
 voice(21, "Restart");
-assert.match(card.text, /SECOND CHANCE/);
+assert.match(card.text, /RESCUE SPECS/);
 voice(22, "Start emergency");
 assert.match(card.text, /SCENE SAFETY/);
 voice(23, "Unsafe");
 assert.match(card.text, /SCENE UNSAFE/);
 voice(24, "Restart");
-assert.match(card.text, /SECOND CHANCE/);
+assert.match(card.text, /RESCUE SPECS/);
 voice(25, "Start emergency");
 assert.match(card.text, /SCENE SAFETY/);
 voice(26, "It's safe");
@@ -1014,7 +1014,7 @@ wearablePinches[0]();
 assert.match(wearableCard.text, /CPR RESPONDER \/ SIM/);
 time = 33.4;
 wearablePinches[0]();
-assert.match(wearableCard.text, /SECOND CHANCE/);
+assert.match(wearableCard.text, /RESCUE SPECS/);
 // Voice recovery on the headset: a silent or failed speech session is
 // stopped and restarted, and recognised phrases are echoed in the footer.
 {
@@ -1316,7 +1316,7 @@ async function checkLensAi() {
   finishAudio();
   time = 53;
   aiVoice[0]({ text: "Back", isFinal: true });
-  assert.match(aiCard.text, /SECOND CHANCE/);
+  assert.match(aiCard.text, /RESCUE SPECS/);
   // ASR sometimes drops the short "Ask AI" prefix on Spectacles.
   time = 55;
   aiVoice[0]({ text: "How fast should I do CPR?", isFinal: true });

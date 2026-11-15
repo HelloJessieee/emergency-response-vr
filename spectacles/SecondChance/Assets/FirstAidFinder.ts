@@ -1,5 +1,5 @@
 /**
- * SECOND CHANCE / equipment finder prototype for Spectacles 2024 (Gen 5).
+ * RESCUE SPECS / equipment finder prototype for Spectacles 2024 (Gen 5).
  *
  * The mock result never identifies a real object. In normal mode the Lens
  * sends a JPEG to the project's bounded /api/lens/find gateway; the OpenAI

@@ -19,7 +19,7 @@ struct SpectaclesKitSampleApp: App {
                             .font(.footnote)
                     }
                     Section("Spectacles") {
-                        Button("Pair with SECOND CHANCE") { model.bind() }
+                        Button("Pair with RESCUE SPECS") { model.bind() }
                         ForEach(model.bondings) { bonding in
                             HStack {
                                 Text("Paired Lens")
@@ -51,7 +51,7 @@ struct SpectaclesKitSampleApp: App {
                         }
                     }
                 }
-                .navigationTitle("Second Chance Phone")
+                .navigationTitle("Rescue Specs Phone")
                 }
                 .tabItem { Label("Phone bridge", systemImage: "phone.connection") }
             }

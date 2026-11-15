@@ -261,4 +261,4 @@ wss.on("connection", (socket, request) => {
   });
 });
 
-server.listen(port, () => console.log(`SECOND CHANCE demo: http://localhost:${port}`));
+server.listen(port, () => console.log(`RESCUE SPECS demo: http://localhost:${port}`));

@@ -117,7 +117,7 @@ function renderViewport(s) {
   $('stage-subtitle').textContent = subtitle;
   $('panel-context').textContent = context;
   $('viewport').innerHTML = content;
-  $('viewport-footer').innerHTML = '<span><strong>● LIVE TRAINING VIEW</strong> · ' + esc(footer) + '</span><span>SECOND CHANCE / 01</span>';
+  $('viewport-footer').innerHTML = '<span><strong>● LIVE TRAINING VIEW</strong> · ' + esc(footer) + '</span><span>RESCUE SPECS / 01</span>';
 }
 function panelOverview(s) {
   const observed = s.assessment.responsive !== null;

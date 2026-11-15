@@ -1,4 +1,4 @@
-// SECOND CHANCE — mannequin and AED-trainer demo only.
+// RESCUE SPECS — mannequin and AED-trainer demo only.
 // Attach this script to a Scene Object in Lens Studio and assign three Text components.
 // @input Component.Text heading
 // @input Component.Text instruction
@@ -6,7 +6,7 @@
 
 var steps = [
     {
-        heading: "SECOND CHANCE",
+        heading: "RESCUE SPECS",
         instruction: "TRAINING MODE\nUse a CPR mannequin and AED trainer.",
         footer: "Primary input: start"
     },
@@ -39,7 +39,7 @@ function renderStep() {
     if (script.heading) { script.heading.text = step.heading; }
     if (script.instruction) { script.instruction.text = step.instruction; }
     if (script.footer) { script.footer.text = step.footer; }
-    print("SECOND CHANCE training step " + currentStep);
+    print("RESCUE SPECS training step " + currentStep);
 }
 
 renderStep();

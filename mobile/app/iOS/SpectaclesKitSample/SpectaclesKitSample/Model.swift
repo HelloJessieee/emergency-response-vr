@@ -10,7 +10,7 @@ struct BondingData: Bonding, Identifiable {
 
 @MainActor
 final class Model: ObservableObject {
-    static let lensName = "SECOND CHANCE"
+    static let lensName = "RESCUE SPECS"
     static let requestText = "secondchance.call.request"
 
     var (deeplinkStream, deeplinkContinuation) = AsyncStream<URL>.makeStream()
@@ -19,7 +19,7 @@ final class Model: ObservableObject {
 
     @Published var bondings: [BondingData] = []
     @Published var sessionStarted = false
-    @Published var status = "Pair with SECOND CHANCE to receive call requests."
+    @Published var status = "Pair with RESCUE SPECS to receive call requests."
     @Published var pendingCall = false
     @Published var localBridgeURL: String {
         didSet { UserDefaults.standard.set(localBridgeURL, forKey: "SecondChanceBridgeURL") }
@@ -36,7 +36,7 @@ final class Model: ObservableObject {
         localBridgeURL = UserDefaults.standard.string(forKey: "SecondChanceBridgeURL") ?? "http://10.8.176.66:4173"
         let identifier = ClientIdentifier(
             clientId: Bundle.main.bundleIdentifier ?? "org.secondchance.phonebridge",
-            appName: "Second Chance Phone"
+            appName: "Rescue Specs Phone"
         )!
         bondingManager = BuilderFactory.create()
             .setIdentifier(identifier)

@@ -1,4 +1,4 @@
-# SECOND CHANCE — 4-minute live demo
+# RESCUE SPECS — 4-minute live demo
 
 ## Prepare
 
@@ -11,7 +11,7 @@ For the Spectacles walkthrough, connect the glasses by USB, open `spectacles/Sec
 
 ## Spectacles walkthrough
 
-Start on `SECOND CHANCE`, then pinch through `CHECK`, `CALL`, `MOCK CALL`, `CPR`, `AED`, `PADS`, `CLEAR`, `FOLLOW`, and `COMPLETE`. On the `CALL` screen, the next pinch enters the clearly labeled simulated dispatcher state. On `CPR`, watch the simulated 110 BPM cue while using a mannequin. The AED stages are for an AED trainer; follow the trainer's own prompts and pinch only after each physical training step is complete. The final pinch restarts the Lens.
+Start on `RESCUE SPECS`, then pinch through `CHECK`, `CALL`, `MOCK CALL`, `CPR`, `AED`, `PADS`, `CLEAR`, `FOLLOW`, and `COMPLETE`. On the `CALL` screen, the next pinch enters the clearly labeled simulated dispatcher state. On `CPR`, watch the simulated 110 BPM cue while using a mannequin. The AED stages are for an AED trainer; follow the trainer's own prompts and pinch only after each physical training step is complete. The final pinch restarts the Lens.
 
 ## Six reveals
 
@@ -26,7 +26,7 @@ Start on `SECOND CHANCE`, then pinch through `CHECK`, `CALL`, `MOCK CALL`, `CPR`
 
 ## Closing line
 
-“SECOND CHANCE turns an uncoordinated group of bystanders into a connected training team. The next step is to validate this interface on actual Spectacles and real training equipment.”
+“RESCUE SPECS turns an uncoordinated group of bystanders into a connected training team. The next step is to validate this interface on actual Spectacles and real training equipment.”
 
 ## Fallbacks
 

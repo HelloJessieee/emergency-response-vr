@@ -26,7 +26,7 @@
 // @input float placementExitDepthCm = 7.0
 // @input float placementHoldSeconds = 0.6
 // @input float placementStackRadiusCm = 9.0
-// SECOND CHANCE — adult CPR training simulation.
+// RESCUE SPECS — adult CPR training simulation.
 // No emergency call, live AED lookup, or measured compression quality occurs here.
 
 // Change both strings for another training region. Leave emergencyNumber empty
@@ -55,7 +55,7 @@ function manualCallTail() {
 
 var screens = {
   home: [
-    "SECOND CHANCE",
+    "RESCUE SPECS",
     "check",
     ["ADULT CPR TRAINING", "Pinch to start lesson.", "Aim at MAP + pinch."],
     "MAP / CPR RESPONDER SIM",
@@ -614,7 +614,7 @@ try {
     margins.top = image.heightCm / 2 - box.top;
     image.fitted = true;
     print(
-      "SECOND CHANCE guide " + image.object.name + " sized " +
+      "RESCUE SPECS guide " + image.object.name + " sized " +
         image.widthCm + " x " + image.heightCm + " cm from glyph box " +
         (box.right - box.left).toFixed(2) + " x " +
         (box.top - box.bottom).toFixed(2),
@@ -779,7 +779,7 @@ try {
   try {
     internetModule = require("LensStudio:InternetModule");
   } catch (networkError) {
-    print("SECOND CHANCE AI network unavailable: " + networkError);
+    print("RESCUE SPECS AI network unavailable: " + networkError);
   }
   var callPanel = null,
     callTarget = false,
@@ -816,9 +816,9 @@ try {
       if (aiAudio.spatialAudio) aiAudio.spatialAudio.enabled = false;
       if (typeof Audio !== "undefined" && Audio.PlaybackMode)
         aiAudio.playbackMode = Audio.PlaybackMode.LowLatency;
-      print("SECOND CHANCE audio configured: nonspatial / low latency");
+      print("RESCUE SPECS audio configured: nonspatial / low latency");
     } catch (audioError) {
-      print("SECOND CHANCE AI audio unavailable: " + audioError);
+      print("RESCUE SPECS AI audio unavailable: " + audioError);
     }
   }
   var editorHand = { tracked: false, position: { x: 0, y: 0, z: 0 } };
@@ -1074,7 +1074,7 @@ try {
       true,
     );
     print(
-      "SECOND CHANCE virtual target manually placed; physical alignment unverified",
+      "RESCUE SPECS virtual target manually placed; physical alignment unverified",
     );
   }
   function clearPads() {
@@ -1266,7 +1266,7 @@ try {
           placedLabel.textFill.color = new vec4(0.32, 1, 0.76, 1);
         }
         print(
-          "SECOND CHANCE virtual AED pad " +
+          "RESCUE SPECS virtual AED pad " +
             (index ? "B" : "A") +
             " placed; physical contact unverified",
         );
@@ -1723,7 +1723,7 @@ try {
     }
     transitionAt = getTime();
     render();
-    print("SECOND CHANCE screen " + id);
+    print("RESCUE SPECS screen " + id);
   }
   function reset() {
     callPanel = null;
@@ -1758,7 +1758,7 @@ try {
     overlay = null;
     transitionAt = getTime();
     render();
-    print("SECOND CHANCE simulated call panel opened from " + current);
+    print("RESCUE SPECS simulated call panel opened from " + current);
   }
   function closeCallPanel() {
     var origin = callPanel ? callPanel.origin : current;
@@ -1916,14 +1916,14 @@ try {
     callReported = true;
     if (current === "help") show(returnScreen);
     else render();
-    print("SECOND CHANCE call reported by user, not verified");
+    print("RESCUE SPECS call reported by user, not verified");
   }
   function assign(role) {
     if (!accepted()) return;
     if (role === "caller") callerAssigned = true;
     if (role === "runner") runnerAssigned = true;
     render();
-    print("SECOND CHANCE role assigned " + role);
+    print("RESCUE SPECS role assigned " + role);
   }
   function openNav() {
     if (!accepted()) return;
@@ -1934,13 +1934,13 @@ try {
     if (!accepted()) return;
     returnScreen = current;
     show("responderMap");
-    print("SECOND CHANCE simulated responder map opened; no live location");
+    print("RESCUE SPECS simulated responder map opened; no live location");
   }
   function aedHere() {
     if (!accepted()) return;
     aedPresent = true;
     show("aedPower");
-    print("SECOND CHANCE AED presence reported by user, not verified");
+    print("RESCUE SPECS AED presence reported by user, not verified");
   }
   function showHelp() {
     if (!accepted()) return;
@@ -1956,7 +1956,7 @@ try {
     transitionAt = getTime();
     beatDown = false;
     render();
-    print("SECOND CHANCE voice topic " + topic);
+    print("RESCUE SPECS voice topic " + topic);
   }
   function aiCard(title, artKind, lines, cue) {
     var valid = {
@@ -1994,11 +1994,11 @@ try {
     stopAiAudio();
     aiAudio.audioTrack = track;
     print(
-      "SECOND CHANCE voice asset: " + topic + " duration " + aiAudio.duration,
+      "RESCUE SPECS voice asset: " + topic + " duration " + aiAudio.duration,
     );
     aiAudio.setOnFinish(function () {
       print(
-        "SECOND CHANCE voice finished: " + topic + " at " + aiAudio.position,
+        "RESCUE SPECS voice finished: " + topic + " at " + aiAudio.position,
       );
       speechActive = false;
       lastSpeechAt = getTime();
@@ -2015,7 +2015,7 @@ try {
     aiView[3] = "SPOKEN TRAINING ANSWER";
     render();
     print(
-      "SECOND CHANCE bundled voice playing: " +
+      "RESCUE SPECS bundled voice playing: " +
         topic +
         " / " +
         aiAudio.isPlaying(),
@@ -2076,7 +2076,7 @@ try {
               aiAudio.play(1);
               aiView[3] = "AI-GENERATED VOICE";
               render();
-              print("SECOND CHANCE AI speech playing");
+              print("RESCUE SPECS AI speech playing");
             },
             function (error) {
               if (aiPendingTopic === topic) aiPendingTopic = null;
@@ -2084,7 +2084,7 @@ try {
                 aiView[3] = "VOICE UNAVAILABLE";
                 render();
               }
-              print("SECOND CHANCE AI speech unavailable: " + error);
+              print("RESCUE SPECS AI speech unavailable: " + error);
             },
           );
         })
@@ -2094,7 +2094,7 @@ try {
             aiView[3] = "VOICE UNAVAILABLE";
             render();
           }
-          print("SECOND CHANCE AI audio fetch failed: " + error);
+          print("RESCUE SPECS AI audio fetch failed: " + error);
         });
     } catch (error) {
       if (aiPendingTopic === topic) aiPendingTopic = null;
@@ -2102,12 +2102,12 @@ try {
         aiView[3] = "VOICE UNAVAILABLE";
         render();
       }
-      print("SECOND CHANCE AI speech failed: " + error);
+      print("RESCUE SPECS AI speech failed: " + error);
     }
   }
   function askAi(question) {
     if (!accepted()) {
-      print("SECOND CHANCE AI command debounced");
+      print("RESCUE SPECS AI command debounced");
       return;
     }
     if (global.secondChanceClearEquipment) global.secondChanceClearEquipment();
@@ -2124,7 +2124,7 @@ try {
     overlay = "ai";
     transitionAt = getTime();
     beatDown = false;
-    print("SECOND CHANCE AI request started");
+    print("RESCUE SPECS AI request started");
     var localTopic = topicFor(prompt);
     var localAnswer = localTopic && answers[localTopic];
     aiView = localAnswer
@@ -2205,7 +2205,7 @@ try {
         transitionAt = getTime();
         render();
         if (aiSpokenTopic !== aiTopic) speakAi(aiTopic, requestId);
-        print("SECOND CHANCE AI topic " + data.topic + " mode " + data.mode);
+        print("RESCUE SPECS AI topic " + data.topic + " mode " + data.mode);
       })
       .catch(function (error) {
         if (requestId !== aiRequestId || overlay !== "ai") return;
@@ -2228,7 +2228,7 @@ try {
             );
         transitionAt = getTime();
         render();
-        print("SECOND CHANCE AI request failed: " + error);
+        print("RESCUE SPECS AI request failed: " + error);
       });
   }
   function visionStatus(message) {
@@ -2296,7 +2296,7 @@ try {
   global.secondChanceVisionStatus = visionStatus;
   function findEquipment(item) {
     if (!accepted()) {
-      print("SECOND CHANCE find command debounced");
+      print("RESCUE SPECS find command debounced");
       return;
     }
     if (practicing()) practice = newPractice();
@@ -2319,7 +2319,7 @@ try {
     );
     transitionAt = getTime();
     render();
-    print("SECOND CHANCE find requested: " + item);
+    print("RESCUE SPECS find requested: " + item);
     if (typeof global.secondChanceFindEquipment === "function")
       global.secondChanceFindEquipment(item);
     else visionStatus("Camera controller unavailable");
@@ -2333,12 +2333,12 @@ try {
       speechActive = false;
       speechStartedAt = -1;
       lastSpeechAt = now - 1;
-      print("SECOND CHANCE voice playback gate recovered after timeout");
+      print("RESCUE SPECS voice playback gate recovered after timeout");
     }
     if (aiAudioProbeAt > 0 && now >= aiAudioProbeAt) {
       aiAudioProbeAt = -1;
       print(
-        "SECOND CHANCE audio after 0.5s: playing=" +
+        "RESCUE SPECS audio after 0.5s: playing=" +
           aiAudio.isPlaying() +
           " position=" +
           aiAudio.position +
@@ -2447,7 +2447,7 @@ try {
     }
     if (handsTogether()) {
       print(
-        "SECOND CHANCE pinch " +
+        "RESCUE SPECS pinch " +
           pinchHold.hand +
           " hold cancelled on " +
           current +
@@ -2460,7 +2460,7 @@ try {
     if (handsReady && !leftHand.isTracked() && !rightHand.isTracked()) {
       // Without a tracked hand the release event may never arrive.
       print(
-        "SECOND CHANCE pinch " +
+        "RESCUE SPECS pinch " +
           pinchHold.hand +
           " hold cancelled on " +
           current +
@@ -2473,7 +2473,7 @@ try {
     var held = now - pinchHold.startedAt;
     if (held >= handScreenTuning.holdSeconds) {
       print(
-        "SECOND CHANCE pinch " +
+        "RESCUE SPECS pinch " +
           pinchHold.hand +
           " held " +
           held.toFixed(2) +
@@ -2499,7 +2499,7 @@ try {
   function onPinchDown(hand) {
     if (handPracticeScreen() && handsTogether()) {
       print(
-        "SECOND CHANCE pinch " +
+        "RESCUE SPECS pinch " +
           hand +
           " ignored on " +
           current +
@@ -2509,14 +2509,14 @@ try {
       return;
     }
     if (!holdScreen()) {
-      print("SECOND CHANCE pinch " + hand + " on " + (overlay || current));
+      print("RESCUE SPECS pinch " + hand + " on " + (overlay || current));
       pinch();
       return;
     }
     if (pinchHold) return;
     pinchHold = { hand: hand, startedAt: getTime(), screen: current, step: 0 };
     pinchNotice = null;
-    print("SECOND CHANCE pinch " + hand + " hold started on " + current);
+    print("RESCUE SPECS pinch " + hand + " hold started on " + current);
     render();
   }
   function onPinchUp(hand) {
@@ -2524,7 +2524,7 @@ try {
     var held = getTime() - pinchHold.startedAt;
     pinchHold = null;
     print(
-      "SECOND CHANCE pinch " +
+      "RESCUE SPECS pinch " +
         hand +
         " released after " +
         held.toFixed(2) +
@@ -2622,13 +2622,13 @@ try {
     render();
     if (!internetModule || !script.aiBaseUrl) {
       phoneView[2] = [
-        "Open Second Chance Phone",
+        "Open Rescue Specs Phone",
         "on your iPhone and start",
         "its local bridge.",
       ];
       phoneView[3] = "LOCAL BRIDGE UNAVAILABLE";
       render();
-      print("SECOND CHANCE iPhone call request blocked: no network bridge");
+      print("RESCUE SPECS iPhone call request blocked: no network bridge");
       return;
     }
     phoneView[3] = "SENDING REQUEST TO MAC";
@@ -2644,30 +2644,30 @@ try {
           if (overlay !== "phone") return;
           phoneView[2] = [
             "Request reached your Mac.",
-            "Open Second Chance Phone",
+            "Open Rescue Specs Phone",
             "and confirm on iPhone.",
           ];
           phoneView[3] = "CHECK IPHONE / NO CALL YET";
           render();
-          print("SECOND CHANCE local phone request delivered to Mac");
+          print("RESCUE SPECS local phone request delivered to Mac");
         })
         .catch(function (error) {
           if (overlay !== "phone") return;
           phoneView[3] = "MAC BRIDGE UNAVAILABLE";
           render();
-          print("SECOND CHANCE local phone request failed: " + error);
+          print("RESCUE SPECS local phone request failed: " + error);
         });
     } catch (error) {
       phoneView[3] = "MAC BRIDGE UNAVAILABLE";
       render();
-      print("SECOND CHANCE local phone request failed: " + error);
+      print("RESCUE SPECS local phone request failed: " + error);
     }
   }
   function startVoiceSession(reason) {
     asrModule.startTranscribing(asrOptions);
     asrStartedAt = getTime();
     print(
-      "SECOND CHANCE voice session started" + (reason ? " (" + reason + ")" : ""),
+      "RESCUE SPECS voice session started" + (reason ? " (" + reason + ")" : ""),
     );
   }
   // Stop first, then start: starting over a live session returned
@@ -2676,13 +2676,13 @@ try {
     if (!asrModule || !asrOptions || asrRestarting) return;
     asrRestarting = true;
     asrRetryAt = -1;
-    print("SECOND CHANCE voice restarting: " + reason);
+    print("RESCUE SPECS voice restarting: " + reason);
     var resume = function () {
       asrRestarting = false;
       try {
         startVoiceSession("restart");
       } catch (startError) {
-        print("SECOND CHANCE voice restart failed: " + startError);
+        print("RESCUE SPECS voice restart failed: " + startError);
         scheduleVoiceRetry();
       }
     };
@@ -2703,7 +2703,7 @@ try {
       voiceTuning.errorRetrySeconds * Math.pow(2, voiceErrorCount - 1),
     );
     asrRetryAt = getTime() + wait;
-    print("SECOND CHANCE voice retry in " + wait + "s");
+    print("RESCUE SPECS voice retry in " + wait + "s");
   }
   function updateVoiceWatchdog(now) {
     if (editorMode || !asrModule || asrRestarting || asrStartedAt < 0) return;
@@ -2737,7 +2737,7 @@ try {
       if (lastAsrUpdateAt - lastAsrPartialLogAt > 2) {
         lastAsrPartialLogAt = lastAsrUpdateAt;
         print(
-          "SECOND CHANCE ASR partial: " + String(eventArgs.text).slice(0, 80),
+          "RESCUE SPECS ASR partial: " + String(eventArgs.text).slice(0, 80),
         );
       }
       return;
@@ -2747,9 +2747,9 @@ try {
       .replace(/[.,!?，。！？]/g, " ")
       .trim();
     var command = spoken.replace(/\s/g, "");
-    print("SECOND CHANCE ASR heard: " + spoken.slice(0, 100));
+    print("RESCUE SPECS ASR heard: " + spoken.slice(0, 100));
     if (speechActive || getTime() - lastSpeechAt < 0.75) {
-      print("SECOND CHANCE ASR ignored during voice playback cooldown");
+      print("RESCUE SPECS ASR ignored during voice playback cooldown");
       return;
     }
     if (
@@ -2824,7 +2824,7 @@ try {
       awaitingAiQuestion &&
       !/^(back|return|cancel|stop|返回|取消)$/.test(command)
     ) {
-      print("SECOND CHANCE follow-up AI question received");
+      print("RESCUE SPECS follow-up AI question received");
       askAi(spoken);
       return;
     }
@@ -2962,7 +2962,7 @@ try {
       // ASR may omit or rephrase the start of a question. Any recognized CPR
       // topic can use the bounded model gateway; offline mode keeps local cards.
       if (internetModule && script.aiBaseUrl) {
-        print("SECOND CHANCE AI topic request " + topic);
+        print("RESCUE SPECS AI topic request " + topic);
         askAi(spoken);
       } else showAnswer(topic);
     }
@@ -3049,10 +3049,10 @@ try {
         }
       });
     } catch (previewKeyError) {
-      print("SECOND CHANCE Preview keyboard unavailable: " + previewKeyError);
+      print("RESCUE SPECS Preview keyboard unavailable: " + previewKeyError);
     }
     print(
-      "SECOND CHANCE Preview placement SIM: J far, K target, O wrong depth, R right, V both, L lost, T set target; N next",
+      "RESCUE SPECS Preview placement SIM: J far, K target, O wrong depth, R right, V both, L lost, T set target; N next",
     );
   } else {
     try {
@@ -3068,11 +3068,11 @@ try {
       leftHand = handInput.getHand("left");
       rightHand = handInput.getHand("right");
       handsReady = true;
-      print("SECOND CHANCE world-space palm and wrist tracking ready");
+      print("RESCUE SPECS world-space palm and wrist tracking ready");
     } catch (handError) {
-      print("SECOND CHANCE hand tracking unavailable: " + handError);
+      print("RESCUE SPECS hand tracking unavailable: " + handError);
     }
-    print("SECOND CHANCE local iPhone bridge selected; no pairing session");
+    print("RESCUE SPECS local iPhone bridge selected; no pairing session");
   }
   try {
     var gestures = require("LensStudio:GestureModule");
@@ -3084,7 +3084,7 @@ try {
     });
     gestures.getTargetingDataEvent(0).add(targetCall);
     gestures.getTargetingDataEvent(1).add(targetCall);
-    print("SECOND CHANCE pinch controls ready");
+    print("RESCUE SPECS pinch controls ready");
     try {
       gestures.getPinchUpEvent(0).add(function () {
         onPinchUp(0);
@@ -3093,23 +3093,23 @@ try {
         onPinchUp(1);
       });
       pinchUpReady = true;
-      print("SECOND CHANCE pinch hold ready on hand-practice screens");
+      print("RESCUE SPECS pinch hold ready on hand-practice screens");
     } catch (pinchUpError) {
       print(
-        "SECOND CHANCE pinch release unavailable; hand screens use a single pinch: " +
+        "RESCUE SPECS pinch release unavailable; hand screens use a single pinch: " +
           pinchUpError,
       );
     }
   } catch (gestureError) {
-    print("SECOND CHANCE pinch controls unavailable: " + gestureError);
+    print("RESCUE SPECS pinch controls unavailable: " + gestureError);
   }
   try {
     if (!editorMode && global.deviceInfoSystem.isInternetAvailable) {
       voiceInternetAvailable = global.deviceInfoSystem.isInternetAvailable();
-      print("SECOND CHANCE internet available: " + voiceInternetAvailable);
+      print("RESCUE SPECS internet available: " + voiceInternetAvailable);
       global.deviceInfoSystem.onInternetStatusChanged.add(function (status) {
         voiceInternetAvailable = !!status.isInternetAvailable;
-        print("SECOND CHANCE internet changed: " + voiceInternetAvailable);
+        print("RESCUE SPECS internet changed: " + voiceInternetAvailable);
         render();
       });
       render();
@@ -3128,7 +3128,7 @@ try {
             : "InternalError";
       if (voiceFailure === "NoInternet") voiceInternetAvailable = false;
       print(
-        "SECOND CHANCE voice unavailable: " + voiceFailure + " (" + code + ")",
+        "RESCUE SPECS voice unavailable: " + voiceFailure + " (" + code + ")",
       );
       // Errors used to stop voice for the rest of the run; retry instead.
       scheduleVoiceRetry();
@@ -3136,8 +3136,8 @@ try {
     });
     startVoiceSession();
   } catch (voiceError) {
-    print("SECOND CHANCE voice unavailable: " + voiceError);
+    print("RESCUE SPECS voice unavailable: " + voiceError);
   }
 } catch (error) {
-  print("SECOND CHANCE setup failed: " + error);
+  print("RESCUE SPECS setup failed: " + error);
 }
