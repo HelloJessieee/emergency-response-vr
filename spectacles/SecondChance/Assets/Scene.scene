@@ -58,16 +58,6 @@
   MaskTexture: !<reference> 00000000-0000-0000-0000-000000000000
   RayTracing: !<reference> 00000000-0000-0000-0000-000000000000
   DevicePropertiesSource: !<reference> 00000000-0000-0000-0000-000000000000
-- !<DeviceTracking/6d3c901f-5083-4513-915c-251ee7d8b8c3>
-  PrefabRemaps:
-    []
-  Name: Device Tracking
-  Enabled: true
-  DeviceTrackingMode: World
-  RotationOptions: !<RotationOptions>
-    InvertRotation: false
-  SurfaceOptions: !<SurfaceOptions>
-    EnhanceWithNativeAR: false
 - !<SceneObject/0005641c-028d-459a-0000-000000014b4d>
   PrefabRemaps:
     []
@@ -82,8 +72,10 @@
   Children:
     - !<own> 00056e79-b066-62ca-0000-000000001406
     - !<own> 0005641c-028d-4630-0000-000000014b56
+    - !<own> a81cf46d-f7d9-4ecf-9e13-aa9e27432145
   Components:
     - !<own> 1e2f76cc-d3e6-4b98-83cb-1a02a8f0e651
+    - !<own> d12c2baf-2acd-48a0-a48a-8a3e73c3a76c
 - !<SceneObject/0005641c-028d-4630-0000-000000014b56>
   PrefabRemaps:
     []
@@ -187,7 +179,12 @@
   Enabled: true
   ScriptAsset: !<reference> 06175dcb-cc70-4e25-bbd5-c024bfeaf2a3
   ScriptInputsDefault:
-    {}
+    placementEnterRadiusCm: true
+    placementExitRadiusCm: true
+    placementDepthCm: true
+    placementExitDepthCm: true
+    placementHoldSeconds: true
+    placementStackRadiusCm: true
   ScriptTypesDefault:
     {}
   ScriptInputs:
@@ -199,6 +196,63 @@
       compressUpTexture: !<reference.Texture> 9565470b-53d8-464f-a05a-256b0893628c
       compressDownTexture: !<reference.Texture> 3d866c4a-ab27-4084-b2fe-c8fd26d10fff
       aedTexture: !<reference.Texture> c5cdf310-f5d3-45ab-a136-b11780e14e6d
+      aiBaseUrl: "http://127.0.0.1:4173"
+      placementEnterRadiusCm: !<float> 6.000000
+      placementExitRadiusCm: !<float> 8.000000
+      placementDepthCm: !<float> 5.000000
+      placementExitDepthCm: !<float> 7.000000
+      placementHoldSeconds: 0.600000
+      placementStackRadiusCm: !<float> 9.000000
+  ScriptTypes:
+    "":
+      {}
+- !<DeviceTracking/6d3c901f-5083-4513-915c-251ee7d8b8c3>
+  PrefabRemaps:
+    []
+  Name: Device Tracking
+  Enabled: true
+  DeviceTrackingMode: World
+  RotationOptions: !<RotationOptions>
+    InvertRotation: false
+  SurfaceOptions: !<SurfaceOptions>
+    EnhanceWithNativeAR: false
+- !<SceneObject/a81cf46d-f7d9-4ecf-9e13-aa9e27432145>
+  PrefabRemaps:
+    []
+  Name: SC Equipment Marker
+  Enabled: false
+  Layers: 1
+  LocalTransform: !<TransformEntity>
+    Position: {x: 0.000000, y: 0.000000, z: 0.000000}
+    Rotation: {x: 0.000000, y: 0.000000, z: 0.000000}
+    Scale: {x: 1.000000, y: 1.000000, z: 1.000000}
+    HasSegmentScaleCompensation: false
+  Children:
+    []
+  Components:
+    []
+- !<ScriptComponent/d12c2baf-2acd-48a0-a48a-8a3e73c3a76c>
+  PrefabRemaps:
+    []
+  Name: FirstAidFinder
+  Enabled: true
+  ScriptAsset: !<reference> e32b1985-fa17-4993-aff1-d572297cb3a1
+  ScriptInputsDefault:
+    mockVisionForTraining: true
+    useOwnAsr: true
+    maxPairAgeSeconds: true
+    maxFrameDeltaSeconds: true
+  ScriptTypesDefault:
+    {}
+  ScriptInputs:
+    "":
+      marker: !<reference.SceneObject> a81cf46d-f7d9-4ecf-9e13-aa9e27432145
+      cameraModule: !<reference.CameraModule> 438b0c6e-8b21-42d3-b557-80e0c6c58379
+      gatewayBaseUrl: "http://127.0.0.1:4173"
+      mockVisionForTraining: false
+      useOwnAsr: false
+      maxPairAgeSeconds: 0.500000
+      maxFrameDeltaSeconds: 0.070000
   ScriptTypes:
     "":
       {}

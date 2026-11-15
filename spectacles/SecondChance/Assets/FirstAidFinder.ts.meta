@@ -1,0 +1,62 @@
+- !<AssetImportMetadata/c95210df-79a6-466b-8e0d-6ef4e55d60be>
+  ImportedAssetIds:
+    TypeScriptAsset: !<reference> e32b1985-fa17-4993-aff1-d572297cb3a1
+  ImporterName: TypeScriptAssetImporter
+  PrimaryAsset: !<reference> e32b1985-fa17-4993-aff1-d572297cb3a1
+  PackageType: NotAPackage
+  LegacyPackagePolicy: ~
+  ExtraData:
+    {}
+  AssetDataMap:
+    TypeScriptAsset: !<own> 75d96b37-a1bb-42a3-bbb7-9bf5a79cf425
+  DependentFiles:
+    []
+  ImporterSettings: !<AssetImporterSettings>
+    {}
+  CompressionSettings: !<own> 00000000-0000-0000-0000-000000000000
+- !<TypeScriptAssetData/75d96b37-a1bb-42a3-bbb7-9bf5a79cf425>
+  SvgIcon: ""
+  SetupScript:
+    code: ""
+  Description: ""
+  VersionMajor: 0
+  VersionMinor: 0
+  VersionPatch: 0
+  ComponentUid: 29de0dbd-5f0f-41af-99dd-ef8b9aaf4b42
+  ExportUid: 00000000-0000-0000-0000-000000000000
+  PackagePolicy: CanBeUnpacked
+  ScriptInputsHidden:
+    cameraModule: false
+    gatewayBaseUrl: false
+    marker: false
+    maxFrameDeltaSeconds: false
+    maxPairAgeSeconds: false
+    mockVisionForTraining: false
+    useOwnAsr: false
+  ScriptTypesHidden:
+    {}
+  ReadMe: !<reference> 00000000-0000-0000-0000-000000000000
+  DeclarationFile: !<reference> 00000000-0000-0000-0000-000000000000
+  Tags:
+    []
+  Attachments:
+    []
+  DefaultScriptInputs:
+    - marker: !<reference.SceneObject> 00000000-0000-0000-0000-000000000000
+      cameraModule: !<reference.CameraModule> 00000000-0000-0000-0000-000000000000
+      gatewayBaseUrl: "http://10.27.176.77:4173"
+      mockVisionForTraining: false
+      useOwnAsr: false
+      maxPairAgeSeconds: 0.500000
+      maxFrameDeltaSeconds: 0.070000
+  ScriptTypes:
+    -
+      {}
+  InputLines:
+    - // @input SceneObject marker
+    - // @input Asset.CameraModule cameraModule
+    - '// @input string gatewayBaseUrl = "http://127.0.0.1:4173"'
+    - // @input bool mockVisionForTraining
+    - // @input bool useOwnAsr
+    - // @input float maxPairAgeSeconds = 0.5
+    - // @input float maxFrameDeltaSeconds = 0.07

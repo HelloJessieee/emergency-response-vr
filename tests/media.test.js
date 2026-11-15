@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { inspectTrainingImage, transcribeTrainingAudio, speakApprovedAnswer, validateTrainingImage } from '../shared/media-gateway.js';
+import { inspectTrainingImage, locateTrainingEquipment, transcribeTrainingAudio, speakApprovedAnswer, validateTrainingImage } from '../shared/media-gateway.js';
 
 test('vision accepts a small image and maps model output to fixed training copy', async () => {
   const image = 'data:image/png;base64,' + Buffer.from('test image').toString('base64');
@@ -14,6 +14,30 @@ test('vision accepts a small image and maps model output to fixed training copy'
   assert.equal(sent.store, false);
   assert.equal(sent.input[0].content[1].image_url, image);
   assert.throws(() => validateTrainingImage('https://example.com/secret.jpg'), /INVALID_IMAGE/);
+});
+
+test('equipment localization validates item, image bounds, and model coordinates', async () => {
+  const image = 'data:image/jpeg;base64,' + Buffer.from('test image').toString('base64');
+  let sent;
+  const found = await locateTrainingEquipment(image, 'gauze', 640, 480, {
+    apiKey: 'test-key', fetchImpl: async (_url, options) => {
+      sent = JSON.parse(options.body);
+      return { ok: true, json: async () => ({ status: 'completed', output: [
+        { type: 'message', content: [{ type: 'output_text', text: '{"found":true,"coordinates":[320,240]}' }] }
+      ] }) };
+    }
+  });
+  assert.deepEqual(found, { found: true, coordinates: [320, 240] });
+  assert.equal(sent.store, false);
+  assert.equal(sent.text.format.type, 'json_schema');
+  assert.equal(sent.input[0].content[1].image_url, image);
+  const outside = await locateTrainingEquipment(image, 'gauze', 640, 480, {
+    apiKey: 'test-key', fetchImpl: async () => ({ ok: true, json: async () => ({ status: 'completed', output: [
+      { type: 'message', content: [{ type: 'output_text', text: '{"found":true,"coordinates":[900,240]}' }] }
+    ] }) })
+  });
+  assert.deepEqual(outside, { found: false, coordinates: [-1, -1] });
+  await assert.rejects(locateTrainingEquipment(image, 'patient', 640, 480, { apiKey: 'test-key' }), /INVALID_ITEM/);
 });
 
 test('transcription sends only a bounded audio file and speech reads approved text', async () => {

@@ -15,7 +15,7 @@ metaInfo:
     []
   lensName: SECOND CHANCE
   lensDescriptors:
-    []
+    - EXPERIMENTAL_API
   lensApplicability:
     - Front
     - Back

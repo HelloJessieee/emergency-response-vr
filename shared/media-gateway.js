@@ -53,6 +53,63 @@ export async function inspectTrainingImage(dataUrl, options = {}) {
   return { kind: Object.hasOwn(visionAnswers, kind) ? kind : 'unclear', answer: visionAnswers[kind] || visionAnswers.unclear };
 }
 
+const locatableEquipment = {
+  tourniquet: 'tourniquet',
+  gauze: 'gauze or gauze dressing',
+  epinephrine: 'epinephrine auto-injector',
+  'epinephrine auto-injector': 'epinephrine auto-injector',
+  'aed trainer': 'AED training device'
+};
+
+export function validateEquipmentSearch(item, width, height) {
+  const name = typeof item === 'string' ? item.trim().toLowerCase() : '';
+  if (!Object.hasOwn(locatableEquipment, name)) throw new Error('INVALID_ITEM');
+  if (!Number.isInteger(width) || !Number.isInteger(height) ||
+      width < 64 || height < 64 || width > 4096 || height > 4096)
+    throw new Error('INVALID_DIMENSIONS');
+  return { name, description: locatableEquipment[name] };
+}
+
+export async function locateTrainingEquipment(dataUrl, item, width, height, options = {}) {
+  validateTrainingImage(dataUrl);
+  const target = validateEquipmentSearch(item, width, height);
+  const response = await openaiFetch('/responses', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: options.model || process.env.OPENAI_VISION_MODEL || 'gpt-5-mini',
+      reasoning: { effort: 'minimal' },
+      instructions: `Locate only the clearly visible ${target.description} in the image. ` +
+        `Image dimensions are ${width} by ${height} pixels. ` +
+        'Return the center of the object in original image pixel coordinates, origin at top left. ' +
+        'If the item is absent, obscured, ambiguous, or you cannot locate it precisely, return found false and coordinates [-1,-1]. ' +
+        'Do not infer patient condition, give medical advice, or describe emergency actions.',
+      input: [{ role: 'user', content: [
+        { type: 'input_text', text: `Find the ${target.description} in this training equipment view.` },
+        { type: 'input_image', image_url: dataUrl, detail: 'high' }
+      ] }],
+      text: { format: { type: 'json_schema', name: 'equipment_location', strict: true,
+        schema: { type: 'object', additionalProperties: false,
+          properties: {
+            found: { type: 'boolean' },
+            coordinates: { type: 'array', items: { type: 'number' } }
+          }, required: ['found', 'coordinates'] }
+      } },
+      max_output_tokens: 120,
+      store: false
+    })
+  }, options);
+  const result = await response.json();
+  if (result.status !== 'completed') throw new Error('INCOMPLETE_VISION');
+  const data = JSON.parse(outputText(result));
+  const xy = data.coordinates;
+  if (data.found !== true || !Array.isArray(xy) || xy.length !== 2 ||
+      !xy.every(Number.isFinite) || xy[0] < 0 || xy[1] < 0 ||
+      xy[0] >= width || xy[1] >= height)
+    return { found: false, coordinates: [-1, -1] };
+  return { found: true, coordinates: xy };
+}
+
 export async function transcribeTrainingAudio(bytes, mime, options = {}) {
   const types = { 'audio/webm': 'webm', 'audio/mp4': 'mp4', 'audio/wav': 'wav', 'audio/mpeg': 'mp3', 'audio/ogg': 'ogg' };
   const type = String(mime || '').split(';')[0].toLowerCase();

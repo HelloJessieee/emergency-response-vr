@@ -7,7 +7,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { createInitialState, reduceEvent } from "./shared/engine.js";
 import { trainingReply } from "./shared/training-assistant.js";
 import { rephraseApproved } from "./shared/model-gateway.js";
-import { inspectTrainingImage, transcribeTrainingAudio, speakApprovedAnswer } from "./shared/media-gateway.js";
+import { inspectTrainingImage, locateTrainingEquipment, transcribeTrainingAudio, speakApprovedAnswer } from "./shared/media-gateway.js";
 import { classifyLensQuestion, lensCard } from "./shared/lens-assistant.js";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
@@ -76,6 +76,8 @@ function apply(session, event) {
 
 const server = http.createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
+  if (url.pathname.startsWith('/api/lens/'))
+    console.info(`[Lens gateway] ${request.method} ${url.pathname} from ${request.socket.remoteAddress || 'unknown'}`);
   if (url.pathname.startsWith('/api/') && !sameOrigin(request, url)) return json(response, 403, { error: 'Origin not allowed.' });
   if (url.pathname === '/api/ai-status') return json(response, 200, { enabled: aiAvailable(request) });
   if (url.pathname === '/api/lens/ask') {
@@ -113,6 +115,21 @@ const server = http.createServer(async (request, response) => {
       return json(response, 200, await inspectTrainingImage(payload?.image));
     } catch (error) {
       return json(response, error.message === 'INVALID_IMAGE' || error.message === 'Request too large.' ? 400 : 502, { error: error.message === 'INVALID_IMAGE' ? 'Use a PNG, JPEG, or WebP under 2 MB.' : 'Image analysis unavailable.' });
+    }
+  }
+  if (url.pathname === '/api/lens/find') {
+    if (request.method !== 'POST') return json(response, 405, { error: 'POST required.' });
+    if (!aiAvailable(request)) return json(response, 503, { error: 'AI is unavailable on this connection.' });
+    if (limited(request, 'lens-find', 4)) return json(response, 429, { error: 'Try again in a minute.' });
+    try {
+      const payload = await readJson(request, 2_800_250);
+      return json(response, 200, await locateTrainingEquipment(
+        payload?.image, payload?.item, payload?.width, payload?.height
+      ));
+    } catch (error) {
+      if (['INVALID_IMAGE', 'INVALID_ITEM', 'INVALID_DIMENSIONS', 'Request too large.'].includes(error.message))
+        return json(response, 400, { error: 'Use a supported training item and a JPEG, PNG, or WebP image under 2 MB.' });
+      return json(response, 502, { error: 'Equipment location unavailable.' });
     }
   }
   if (url.pathname === '/api/transcribe') {

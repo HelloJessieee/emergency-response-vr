@@ -24,7 +24,7 @@ test('model classifies the question without generating medical instructions', as
   assert.deepEqual(result, { topic: 'rate', mode: 'model' });
   assert.match(sent.instructions, /Return exactly one token/);
   assert.equal(sent.store, false);
-  assert.equal(lensCard(result.topic).lines[0], 'Aim for 100-120 per min.');
+  assert.equal(lensCard(result.topic).lines[0], 'Press 100-120 per min.');
 });
 
 test('unapproved model output falls back to a fixed card', async () => {

@@ -1,6 +1,6 @@
 const cards = {
   overview: { title: 'AI / FIRST ACTIONS', art: 'check', lines: ['Call 911. Get an AED.', 'Start chest compressions.', 'Follow the dispatcher.'] },
-  rate: { title: 'AI / CPR RHYTHM', art: 'compress', lines: ['Aim for 100-120 per min.', 'Let the chest rise fully.', 'Beat here is practice only.'] },
+  rate: { title: 'CPR SPEED / 100-120', art: 'compress', lines: ['Press 100-120 per min.', 'Let the chest rise fully.', 'Beat here is practice only.'] },
   depth: { title: 'AI / CPR DEPTH', art: 'compress', lines: ['Adult: at least 2 in.', 'Avoid more than 2.4 in.', 'Depth is not measured.'] },
   hands: { title: 'AI / HAND POSITION', art: 'hands', lines: ['Heel in chest center.', 'Other hand on top.', 'Shoulders over hands.'] },
   aed: { title: 'AI / AED TRAINER', art: 'aed', lines: ['Turn the AED on.', 'Follow its voice prompts.', 'Stand clear when told.'] },

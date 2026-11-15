@@ -34,6 +34,22 @@
     compressDownTexture: false
     compressUpTexture: false
     handsTexture: false
+    placementDepthCm: false
+    placementEnterRadiusCm: false
+    placementExitDepthCm: false
+    placementExitRadiusCm: false
+    placementHoldSeconds: false
+    placementStackRadiusCm: false
+    voiceAed: false
+    voiceBreathing: false
+    voiceBreaths: false
+    voiceCall: false
+    voiceDepth: false
+    voiceHands: false
+    voiceOverview: false
+    voiceRate: false
+    voiceScope: false
+    voiceTeam: false
   ScriptTypesHidden:
     {}
   ReadMe: !<reference> 00000000-0000-0000-0000-000000000000
@@ -51,6 +67,22 @@
       compressDownTexture: !<reference.Texture> 00000000-0000-0000-0000-000000000000
       aedTexture: !<reference.Texture> 00000000-0000-0000-0000-000000000000
       aiBaseUrl: "http://10.27.176.77:4173"
+      voiceRate: !<reference.AudioTrackAsset> 00000000-0000-0000-0000-000000000000
+      voiceDepth: !<reference.AudioTrackAsset> 00000000-0000-0000-0000-000000000000
+      voiceHands: !<reference.AudioTrackAsset> 00000000-0000-0000-0000-000000000000
+      voiceAed: !<reference.AudioTrackAsset> 00000000-0000-0000-0000-000000000000
+      voiceBreathing: !<reference.AudioTrackAsset> 00000000-0000-0000-0000-000000000000
+      voiceCall: !<reference.AudioTrackAsset> 00000000-0000-0000-0000-000000000000
+      voiceBreaths: !<reference.AudioTrackAsset> 00000000-0000-0000-0000-000000000000
+      voiceTeam: !<reference.AudioTrackAsset> 00000000-0000-0000-0000-000000000000
+      voiceOverview: !<reference.AudioTrackAsset> 00000000-0000-0000-0000-000000000000
+      voiceScope: !<reference.AudioTrackAsset> 00000000-0000-0000-0000-000000000000
+      placementEnterRadiusCm: !<float> 6.000000
+      placementExitRadiusCm: !<float> 8.000000
+      placementDepthCm: !<float> 5.000000
+      placementExitDepthCm: !<float> 7.000000
+      placementHoldSeconds: 0.600000
+      placementStackRadiusCm: !<float> 9.000000
   ScriptTypes:
     -
       {}
