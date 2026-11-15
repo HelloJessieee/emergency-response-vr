@@ -27,6 +27,7 @@
   PackagePolicy: CanBeUnpacked
   ScriptInputsHidden:
     aedTexture: false
+    aiBaseUrl: false
     callAedTexture: false
     callTexture: false
     checkTexture: false
@@ -49,6 +50,7 @@
       compressUpTexture: !<reference.Texture> 00000000-0000-0000-0000-000000000000
       compressDownTexture: !<reference.Texture> 00000000-0000-0000-0000-000000000000
       aedTexture: !<reference.Texture> 00000000-0000-0000-0000-000000000000
+      aiBaseUrl: "http://10.27.176.77:4173"
   ScriptTypes:
     -
       {}

@@ -5,19 +5,39 @@
  // @input Asset.Texture compressUpTexture
  // @input Asset.Texture compressDownTexture
  // @input Asset.Texture aedTexture
+ // @input string aiBaseUrl = "http://10.27.176.77:4173"
  // SECOND CHANCE — adult CPR training simulation.
  // No emergency call, live AED lookup, or measured compression quality occurs here.
 
+// Change both strings for another training region. Leave emergencyNumber empty
+// when unknown; never infer an emergency number from device location.
+var emergencyConfig = {regionLabel:"United States", emergencyNumber:"911"};
+function callRegion() {
+ return emergencyConfig.emergencyNumber ?
+  emergencyConfig.regionLabel.slice(0,Math.max(0,25-emergencyConfig.emergencyNumber.length)) +
+   " / " + emergencyConfig.emergencyNumber :
+  "Region not configured";
+}
+function manualCall() {
+ return emergencyConfig.emergencyNumber ?
+  "PHONE: CALL " + emergencyConfig.emergencyNumber + " NOW" :
+  "Call local emergency";
+}
+function manualCallTail() {
+ return emergencyConfig.emergencyNumber ? "TRAINING / NO REAL CALL" :
+  "services on your phone";
+}
+
 var screens = {
- home: ["SECOND CHANCE", "check", ["ADULT CPR TRAINING", "Say START EMERGENCY.", "Or pinch to begin."], "Real emergency? Call 911."],
+ home: ["SECOND CHANCE", "check", ["ADULT CPR TRAINING", "Say START EMERGENCY.", "Or ASK AI how fast?"], "Real emergency? Use phone."],
  safety: ["01 / SCENE SAFETY", "check", ["Check for traffic, fire,", "wires or other danger.", "Is the scene safe?"], "Say SAFE or UNSAFE."],
- unsafe: ["STOP / SCENE UNSAFE", "check", ["Do not enter danger.", "Move to safety and", "call 911 for help."], "Say RESTART to retry."],
+ unsafe: ["STOP / SCENE UNSAFE", "check", ["Do not enter danger.", "Move to safety and", "call emergency services."], "Say RESTART to retry."],
  response: ["02 / CHECK RESPONSE", "check", ["Tap both shoulders.", "Shout: Are you OK?", "Does the adult respond?"], "Say YES or NO."],
  responsive: ["PERSON RESPONDS", "check", ["Do not start CPR.", "Assess and call for help", "if needed."], "Say RESTART to retry."],
  breathing: ["03 / CHECK BREATHING", "check", ["Look for normal breathing.", "Gasping is not normal.", "Breathing normally?"], "Say YES, NO or GASPING."],
- breathingYes: ["NORMAL BREATHING", "check", ["Do not start compressions.", "Call 911; monitor breathing.", "Follow the dispatcher."], "Say RESTART to retry."],
- call: ["04 / CALL 911", "call", ["Call 911 on your phone.", "Or tell someone to call.", "Ask for an AED now."], "THIS LENS MAKES NO CALL."],
- team: ["05 / ASSIGN ROLES", "callAed", ["You: start compressions.", "Person 2: call 911.", "Person 3: bring an AED."], "Say CALLER / AED RUNNER."],
+ breathingYes: ["NORMAL BREATHING", "check", ["Do not start compressions.", "Call for help; monitor.", "Follow the dispatcher."], "Say RESTART to retry."],
+ call: ["04 / CALL HELP", "call", ["Call on your iPhone.", "Use Siri hands-free, or", "ask someone to call."], "THIS LENS MAKES NO CALL."],
+ team: ["05 / ASSIGN ROLES", "callAed", ["You: start compressions.", "Person 2: call for help.", "Person 3: bring an AED."], "Say CALLER / AED RUNNER."],
  hands: ["06 / HAND POSITION", "hands", ["Heel in chest center.", "Other hand on top.", "Shoulders over hands."], "Arms straight. Say NEXT."],
  compress: ["07 / COMPRESS", "compress", ["Push hard and fast.", "100-120 per minute.", "Allow full recoil."], "110 BPM PRACTICE BEAT."],
  aedPower: ["08 / TURN ON AED", "aed", ["Turn on the AED.", "Follow its voice and", "visual instructions."], "Say NEXT for pad guide."],
@@ -27,7 +47,7 @@ var screens = {
  navStart: ["AED ROUTE / SIM", "callAed", ["Training route only.", "AED: lobby cabinet.", "No live AED data."], "Say NEXT for route."],
  navHall: ["AED ROUTE / SIM", "callAed", ["Step 1: leave the room.", "Go toward the lobby.", "Keep CPR going here."], "Say NEXT for cabinet."],
  navCabinet: ["AED ROUTE / SIM", "aed", ["Step 2: find the", "lobby AED cabinet.", "Bring AED to the adult."], "Say AED HERE or BACK."],
- help: ["CALL STATUS", "call", ["This Lens cannot dial 911.", "Use your phone or ask", "someone to call now."], "Say CALLED when done."]
+ help: ["CALL STATUS", "call", ["This Lens cannot dial 911.", "On iPhone, use Siri or", "ask someone to call."], "Say CALLED when done."]
 };
 var lesson = ["home","safety","response","breathing","call","team","hands","compress","aedPower","aedPads","aedClear","aedResume"];
 var answers = {
@@ -116,13 +136,27 @@ try {
  }
 
  var current = "home", overlay = null, returnScreen = "call";
+ var aiView = ["AI / READY", "check", ["Ask a training question.", "Say ASK AI, then speak.", "Pinch to return."], "TRAINING ONLY / NO LIVE AID"];
+ var aiRequestId = 0, internetModule = null, remoteMediaModule = null;
+ var aiAudio = null, aiTopic = null, speechActive = false, lastSpeechAt = -10;
+ try { internetModule = require("LensStudio:InternetModule"); }
+ catch (networkError) { print("SECOND CHANCE AI network unavailable: " + networkError); }
+ var callPanel = null, callTarget = false, lastCallTargetAt = -1;
  var lastAction = -1, transitionAt = -1, beatDown = false;
  var callReported = false, callerAssigned = false, runnerAssigned = false, aedPresent = false;
  var practice = newPractice(), leftHand = null, rightHand = null, handsReady = false;
  var editorMode = !!(global.deviceInfoSystem && global.deviceInfoSystem.isEditor());
+ if (!editorMode) {
+  try {
+   remoteMediaModule = require("LensStudio:RemoteMediaModule");
+   aiAudio = obj.createComponent("Component.AudioComponent");
+   aiAudio.volume = 0.9;
+  } catch (audioError) {print("SECOND CHANCE AI audio unavailable: " + audioError);}
+ }
  var editorHand = {tracked:false,position:{x:0,y:0,z:0}};
  function practicing() { return !overlay && current === "compress"; }
  function statusLines() {
+  if (!editorMode && !handsReady) return ["Hand tracking unavailable","Follow visual beat only"];
   if (practice.status === "Stack your hands and bring them into view")
    return ["Stack your hands and","bring them into view"];
   if (practice.status === "Bring your hands back into view")
@@ -220,7 +254,10 @@ try {
   return {side:side,position:hand.wrist.position,handsClose:handsClose};
  }
  function footer() {
+  if (callPanel) return "AIM / PINCH OR SAY SELECT";
   if (overlay) return "SAY BACK / PINCH BACK";
+  if (current === "safety" || current === "call")
+   return callTarget ? "> CALL EMERGENCY / PINCH" : "CALL EMERGENCY: AIM+PINCH";
   if (current === "safety" || current === "response" || current === "breathing") return "PINCH = SCENARIO ANSWER";
   if (current === "unsafe" || current === "responsive" || current === "breathingYes") return "SAY RESTART / PINCH";
   if (current === "navCabinet") return "SAY AED HERE / BACK";
@@ -228,7 +265,32 @@ try {
   return "SAY NEXT / PINCH NEXT";
  }
  function render() {
-  var view = overlay ? answers[overlay] : screens[current];
+  if (callPanel) {
+   var state=callPanel.stage, main="",sub="";
+   var prompts=["Where are you?","Is the person responsive?","Are they breathing normally?"];
+   if (state==="ready") {main="Start simulated call";sub="Cancel";}
+   else if (state==="ringing") {main="Cancel";sub="";}
+   else if (state==="connected" || state==="dispatcher") {
+    main="Next prompt";sub="End simulation";
+   } else {main="Back to lesson";sub="";}
+   var detail=state==="ready" ? "SIMULATED CALL / READY" :
+    state==="ringing" ? "SIMULATED CALL / RINGING" :
+    state==="ended" ? "SIMULATION ENDED" :
+    state==="connected" ? "SIM DISPATCHER CONNECTED" :
+    "SIM DISPATCHER / PROMPT";
+   var question=(state==="connected" || state==="dispatcher") ?
+    prompts[callPanel.question] : "";
+   var actionA=(callPanel.focus==="primary" ? "> " : "  ")+main;
+   var actionB=sub ? (callPanel.focus==="secondary" ? "> " : "  ")+sub : "";
+   card.size=48;
+   artObject.getTransform().setLocalScale(new vec3(1.15,1.15,1));
+   card.text=["ADULT CPR / SIMULATION","CALL / TRAINING ONLY","","","",
+    callRegion(),detail,question,callPanel.ack || "",actionA,actionB,
+    manualCall(),manualCallTail()].join("\n");
+   art.backgroundSettings.fill.texture=script.callTexture;
+   return;
+  }
+  var view = overlay ? (overlay === "ai" ? aiView : answers[overlay]) : screens[current];
   card.size=practicing() ? 49 : 60;
   artObject.getTransform().setLocalScale(practicing() ?
    new vec3(1.08,1.08,1) : new vec3(1.25,1.25,1));
@@ -238,6 +300,7 @@ try {
      " / AED " + (aedPresent ? "HERE" : runnerAssigned ? "SENT" : "OPEN");
   }
   if (!overlay && current === "call" && callReported) cue = "CALL REPORTED BY USER.";
+  else if (!overlay && (current === "safety" || current === "call")) cue=callRegion();
   if (!overlay && current === "compress" && aedPresent) cue = "AED HERE? SAY USE AED.";
   var lines = ["ADULT CPR / SIMULATION", view[0], "", "", ""];
   if (!practicing()) lines.push("");
@@ -252,14 +315,18 @@ try {
   art.backgroundSettings.fill.texture = textureFor(view[1], beatDown);
  }
  function show(id) {
+  aiRequestId++;
+  stopAiAudio(); aiTopic = null;
   if (current === "compress" || id === "compress") {
    practice=newPractice();
    if (editorMode) {editorHand.tracked=false;editorHand.position={x:0,y:0,z:0};}
   }
-  current = id; overlay = null; beatDown = false; transitionAt = getTime();
+  current = id; overlay = null; beatDown = false; callTarget = false;
+  transitionAt = getTime();
   render(); print("SECOND CHANCE screen " + id);
  }
  function reset() {
+  callPanel=null; callTarget=false; lastCallTargetAt=-1;
   callReported = false; callerAssigned = false; runnerAssigned = false; aedPresent = false;
   returnScreen = "call"; show("home");
  }
@@ -268,9 +335,69 @@ try {
   if (now - lastAction < 0.45) return false;
   lastAction = now; return true;
  }
+ function openCallPanel() {
+  if (!accepted()) return;
+  callPanel={stage:"ready",origin:current,focus:"primary",question:0,
+   connectAt:-1,ack:""};
+  overlay=null; transitionAt=getTime(); render();
+  print("SECOND CHANCE simulated call panel opened from " + current);
+ }
+ function closeCallPanel() {
+  var origin=callPanel ? callPanel.origin : current;
+  callPanel=null; current=origin; callTarget=false; lastCallTargetAt=-1;
+  transitionAt=getTime(); render();
+ }
+ function selectCallPanel() {
+  if (!accepted() || !callPanel) return;
+  var state=callPanel.stage;
+  if (state==="ready") {
+   if (callPanel.focus==="secondary") {closeCallPanel();return;}
+   callPanel.stage="ringing";callPanel.focus="primary";callPanel.ack="";
+   callPanel.connectAt=getTime()+1.6;
+  } else if (state==="ringing") closeCallPanel();
+  else if (state==="connected" || state==="dispatcher") {
+   if (callPanel.focus==="secondary" || callPanel.question===2) {
+    callPanel.stage="ended";callPanel.focus="primary";
+    callPanel.connectAt=-1;callPanel.ack="";
+   } else {
+    callPanel.question++;callPanel.stage="dispatcher";
+    callPanel.ack=callPanel.question===1 ? "Thank you. Stay with me." :
+     "Thank you. Keep going.";
+   }
+  } else closeCallPanel();
+  if (callPanel) {transitionAt=getTime();render();}
+ }
+ // GestureModule targeting ray selects a row on the camera-facing call card.
+ // The same physical pinch is handled only by pinch() and accepted().
+ function targetCall(args) {
+  if (!args || !args.isValid || !cameraRoot || !cameraRoot.getTransform) return;
+  var ct=cameraRoot.getTransform(),center=obj.getTransform().getWorldPosition();
+  var normal=ct.forward,up=ct.up,ray=args.rayDirectionInWorld,
+   origin=args.rayOriginInWorld;
+  var dot=ray.x*normal.x+ray.y*normal.y+ray.z*normal.z;
+  if (Math.abs(dot)<0.01) return;
+  var dx=center.x-origin.x,dy=center.y-origin.y,dz=center.z-origin.z;
+  var t=(dx*normal.x+dy*normal.y+dz*normal.z)/dot;
+  if (t<=0 || t>100) return;
+  var hit={x:origin.x+ray.x*t-center.x,y:origin.y+ray.y*t-center.y,
+   z:origin.z+ray.z*t-center.z};
+  var height=hit.x*up.x+hit.y*up.y+hit.z*up.z;
+  var right=ct.right,wide=hit.x*right.x+hit.y*right.y+hit.z*right.z;
+  if (Math.abs(wide)>14) return;
+  lastCallTargetAt=getTime();
+  if (callPanel) {
+   var focus=height < -5 ? "secondary" : "primary";
+   if (height < -15 || height > 8 || (focus==="secondary" &&
+       (callPanel.stage==="ringing" || callPanel.stage==="ended"))) return;
+   if (focus!==callPanel.focus) {callPanel.focus=focus;render();}
+  } else if (current==="safety" || current==="call") {
+   var active=height < -5 && height > -15;
+   if (active!==callTarget) {callTarget=active;render();}
+  }
+ }
  function next() {
   if (!accepted()) return;
-  if (overlay) { overlay = null; render(); return; }
+  if (overlay) { overlay = null; stopAiAudio(); render(); return; }
   if (current === "unsafe" || current === "responsive" || current === "breathingYes") { reset(); return; }
   if (current === "navStart") { show("navHall"); return; }
   if (current === "navHall") { show("navCabinet"); return; }
@@ -316,34 +443,146 @@ try {
   overlay = topic; transitionAt = getTime(); beatDown = false; render();
   print("SECOND CHANCE voice topic " + topic);
  }
+ function aiCard(title, artKind, lines, cue) {
+  var valid = {check:1,call:1,callAed:1,hands:1,compress:1,aed:1};
+  function short(value) {return String(value || "").replace(/[\r\n]/g," ").slice(0,28);}
+  return [short(title),valid[artKind] ? artKind : "check",
+   [short(lines[0]),short(lines[1]),short(lines[2])],short(cue)];
+ }
+ function stopAiAudio() {
+  if (aiAudio && aiAudio.isPlaying && aiAudio.isPlaying()) aiAudio.stop(true);
+  if (speechActive) lastSpeechAt = getTime();
+  speechActive = false;
+ }
+ function speakAi(topic, requestId) {
+  if (!aiAudio || !remoteMediaModule || !internetModule || !script.aiBaseUrl) return;
+  try {
+   var url = String(script.aiBaseUrl).replace(/\/$/,"") +
+    "/api/lens/audio?topic=" + encodeURIComponent(topic);
+   var resource = internetModule.makeResourceFromUrl(url);
+   remoteMediaModule.loadResourceAsAudioTrackAsset(resource,function(track) {
+    if (requestId !== aiRequestId || overlay !== "ai") return;
+    stopAiAudio();
+    aiAudio.audioTrack = track;
+    aiAudio.setOnFinish(function() {speechActive = false; lastSpeechAt = getTime();});
+    speechActive = true;
+    aiAudio.play(1);
+   },function(error) {print("SECOND CHANCE AI speech unavailable: " + error);});
+  } catch (error) {print("SECOND CHANCE AI speech failed: " + error);}
+ }
+ function askAi(question) {
+  if (!accepted()) return;
+  var requestId = ++aiRequestId;
+  var prompt = String(question || "").trim().slice(0,240);
+  stopAiAudio(); aiTopic = null;
+  callPanel = null; callTarget = false;
+  overlay = "ai"; transitionAt = getTime(); beatDown = false;
+  aiView = aiCard("AI / THINKING", "check", ["Listening to your question", "and checking the training", "guide..."], "VOICE QUESTION / TRAINING");
+  render();
+  if (!prompt) {
+   aiView = aiCard("AI / ASK A QUESTION", "check", ["Say ASK AI, followed by", "a CPR or AED question.", "Example: ASK AI HOW FAST?"], "SAY BACK TO RETURN");
+   render(); return;
+  }
+  if (!internetModule || !script.aiBaseUrl) {
+   aiView = aiCard("AI / OFFLINE", "check", ["Server not connected.", "The guided drill still", "works without internet."], "SAY BACK TO RETURN");
+   render(); return;
+  }
+  var url = String(script.aiBaseUrl).replace(/\/$/,"") + "/api/lens/ask";
+  internetModule.fetch(new Request(url,{method:"POST",
+   headers:{"Content-Type":"application/json"},body:JSON.stringify({question:prompt,stage:current})}))
+   .then(function(response) {
+    if (response.status !== 200) throw new Error("HTTP " + response.status);
+    return response.json();
+   }).then(function(data) {
+    if (requestId !== aiRequestId || overlay !== "ai") return;
+    if (!data || !data.lines || data.lines.length !== 3) throw new Error("Invalid answer");
+    aiView = aiCard(data.title,data.art,data.lines,
+     data.mode === "model" ? "AI CLASSIFIED / TRAINING" : "TRAINING GUIDE / VERIFIED");
+    aiTopic = data.topic;
+    transitionAt = getTime(); render();
+    speakAi(aiTopic,requestId);
+    print("SECOND CHANCE AI topic " + data.topic + " mode " + data.mode);
+   }).catch(function(error) {
+    if (requestId !== aiRequestId || overlay !== "ai") return;
+    aiView = aiCard("AI / CONNECTION LOST", "check", ["Check the training server", "and the headset network.", "The drill remains ready."], "SAY BACK TO RETURN");
+    transitionAt = getTime(); render();
+    print("SECOND CHANCE AI request failed: " + error);
+   });
+ }
  function update() {
   var now = getTime();
+  if (callTarget && now-lastCallTargetAt>0.25) {callTarget=false;render();}
+  if (callPanel && callPanel.stage==="ringing" && now>=callPanel.connectAt) {
+   callPanel.stage="connected";callPanel.connectAt=-1;
+   callPanel.ack="Training dispatcher only.";
+   transitionAt=now;render();
+  }
   var fade = Math.min(1,Math.max(0.3,(now-transitionAt)/0.18));
-  card.textFill.color = new vec4(1,1,1,fade);
-  bg.fill.color = practicing() && now<practice.highlightUntil ?
+  card.textFill.color = overlay === "ai" ? new vec4(0.78,1,0.97,fade) : new vec4(1,1,1,fade);
+  bg.fill.color = overlay === "ai" ? new vec4(0.015,0.13,0.16,0.94*fade) :
+   practicing() && now<practice.highlightUntil ?
    new vec4(0.03,0.14,0.15,0.9*fade) : new vec4(0.02,0.07,0.10,0.9*fade);
-  art.backgroundSettings.fill.colorTint = new vec4(1,1,1,fade);
+  art.backgroundSettings.fill.colorTint = overlay === "ai" ?
+   new vec4(0.45,1,0.90,fade) : new vec4(1,1,1,fade);
+  if (callPanel) {
+   var pulse=callPanel.stage==="ringing" && Math.floor(now*3)%2===0 ? 1.22 : 1.15;
+   artObject.getTransform().setLocalScale(new vec3(pulse,pulse,1));
+   return;
+  }
   if (practicing()) practiceSample(handSample(),now);
-  var view = overlay ? answers[overlay] : screens[current];
+  var view = overlay ? (overlay === "ai" ? aiView : answers[overlay]) : screens[current];
   if (view[1] !== "compress") return;
   var down = (now % (60/110)) < 0.16;
   if (down !== beatDown) { beatDown = down; render(); }
  }
  function pinch() {
+  if (callPanel) {selectCallPanel();return;}
+  if (callTarget && (current==="safety" || current==="call"))
+   {openCallPanel();return;}
   if (current === "safety" && !overlay) { assess(true); return; }
   if ((current === "response" || current === "breathing") && !overlay) { assess(false); return; }
   next();
  }
+ function assessmentValue(spoken,command) {
+  if (/^(yes|yeah|yep|是)$/.test(command)) return true;
+  if (/^(no|nope|否)$/.test(command)) return false;
+  if (current === "safety") {
+   if (/(unsafe|not safe|isn't safe|danger|不安全|有危险)/.test(spoken)) return false;
+   if (/(scene is safe|it's safe|it is safe|safe here|^safe$|安全)/.test(spoken)) return true;
+  }
+  if (current === "response") {
+   if (/(unresponsive|no response|not responding|doesn't respond|无反应|没有反应)/.test(spoken)) return false;
+   if (/(responsive|is responding|responds|is awake|有反应|醒着)/.test(spoken)) return true;
+  }
+  if (current === "breathing") {
+   if (/(not breathing|no breathing|only gasping|gasping|isn't breathing|没有呼吸|喘气)/.test(spoken)) return false;
+   if (/(breathing normally|normal breathing|^normalbreathing$|呼吸正常|正常呼吸)/.test(spoken)) return true;
+  }
+  return null;
+ }
  function onVoiceText(eventArgs) {
   if (!eventArgs.isFinal || !eventArgs.text) return;
+  if (speechActive || getTime()-lastSpeechAt<0.75) return;
   var spoken = eventArgs.text.toLowerCase().replace(/[.,!?，。！？]/g," ").trim();
   var command = spoken.replace(/\s/g,"");
+  var aiQuestion = /^(?:ask ai|hey ai|ai question|问ai|问一下ai|问人工智能)\s*(.*)$/.exec(spoken);
+  if (aiQuestion) { askAi(aiQuestion[1]); return; }
   if (/^(restart|startover|reset|重来|重新开始)$/.test(command)) {
    if (accepted()) reset(); return;
   }
+  if (callPanel) {
+   if (/^(back|return|cancel|stop|返回|取消)$/.test(command))
+    {if (accepted()) closeCallPanel();return;}
+   if (/^(end|end simulation|hang up|结束)$/.test(spoken))
+    {if (accepted()) {callPanel.stage="ended";callPanel.connectAt=-1;
+     callPanel.ack="";render();}return;}
+   if (/^(select|next|continue|start simulated call|begin call|下一步|继续)$/.test(spoken))
+    {selectCallPanel();return;}
+   return;
+  }
   if (/^(back|return|返回|回去)$/.test(command)) {
    if (!accepted()) return;
-   if (overlay) { overlay = null; render(); }
+   if (overlay) { overlay = null; stopAiAudio(); render(); }
    else if (current === "navStart" || current === "navHall" || current === "navCabinet" || current === "help") show(returnScreen);
    return;
   }
@@ -356,11 +595,12 @@ try {
   if (/(someone|person|bystander).*(call 911|call emergency)|assign caller|caller assigned|让.*报警/.test(spoken)) { assign("caller"); return; }
   if (/(someone|person|bystander).*(get|fetch|bring).*aed|assign aed runner|aed runner|让.*拿.*除颤/.test(spoken)) { assign("runner"); return; }
   if (/(i called 911|911 called|called 911|call completed|已经报警|打过911)/.test(spoken)) { reportCall(); return; }
-  if (/(call 911|dial 911|call emergency|拨打911|报警)/.test(spoken)) { showHelp(); return; }
-  if ((current === "safety" || current === "response" || current === "breathing") &&
-      /^(yes|yeah|yep|safe|responsive|normalbreathing|是|安全|有反应|正常呼吸)$/.test(command)) { assess(true); return; }
-  if ((current === "safety" || current === "response" || current === "breathing") &&
-      /^(no|nope|unsafe|unresponsive|notbreathing|gasping|否|不安全|无反应|没有呼吸|喘气)$/.test(command)) { assess(false); return; }
+  if (/(call 911|dial 911|call emergency|emergency services|拨打911|报警)/.test(spoken))
+   { openCallPanel(); return; }
+  if (current === "safety" || current === "response" || current === "breathing") {
+   var value = assessmentValue(spoken,command);
+   if (value !== null) { assess(value); return; }
+  }
   if (/^(next|continue|下一步|继续)$/.test(command)) { pinch(); return; }
   if (/(breathing normally now|started breathing normally|恢复正常呼吸)/.test(spoken) && current === "compress") {
    if (accepted()) show("breathingYes"); return;
@@ -372,16 +612,21 @@ try {
  script.createEvent("UpdateEvent").bind(update);
  script.createEvent("TriggerPrimaryEvent").bind(pinch);
  if (editorMode) {
-  // Preview only: N advances; B shows a hand; D/U move it; L hides it.
+  // Preview: C opens call, F changes focus, N selects; B/D/U/L move hand.
   script.api.practiceSample=function(sample,at) {practiceSample(sample,at);};
   script.createEvent("KeyPressEvent").bind(function(event) {
    if (event.key===Keys.N) pinch();
+   else if (event.key===Keys.C) openCallPanel();
+   else if (event.key===Keys.F && callPanel) {
+    callPanel.focus=callPanel.focus==="primary" ? "secondary" : "primary";render();
+   }
+   else if (event.key===Keys.X && callPanel) {if (accepted()) closeCallPanel();}
    else if (practicing() && event.key===Keys.B) editorHand.tracked=true;
    else if (practicing() && event.key===Keys.D) editorHand.position.y=-8;
    else if (practicing() && event.key===Keys.U) editorHand.position.y=0;
    else if (practicing() && event.key===Keys.L) editorHand.tracked=false;
   });
-  print("SECOND CHANCE Preview keys: N next, B hand, D down, U return, L tracking loss");
+  print("SECOND CHANCE Preview: C call, F focus, N select, X cancel; B/D/U/L hand");
  } else {
   try {
    var sik=require("SpectaclesInteractionKit.lspkg/SIK").SIK;
@@ -395,6 +640,8 @@ try {
   var gestures = require("LensStudio:GestureModule");
   gestures.getPinchDownEvent(0).add(pinch);
   gestures.getPinchDownEvent(1).add(pinch);
+  gestures.getTargetingDataEvent(0).add(targetCall);
+  gestures.getTargetingDataEvent(1).add(targetCall);
   print("SECOND CHANCE pinch controls ready");
  } catch (gestureError) { print("SECOND CHANCE pinch controls unavailable: " + gestureError); }
  try {

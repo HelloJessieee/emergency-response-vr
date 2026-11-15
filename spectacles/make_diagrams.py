@@ -52,13 +52,30 @@ ln(d, [(408, 216), (359, 216), (315, 243)], TEAL, 5)
 for x in (99, 406): ell(d, (x-8,208,x+8,224), TEAL, 3, TEAL)
 im.resize((W,W), Image.Resampling.LANCZOS).save(OUT/'check.png')
 
-# 2a: phone; 2b: AED arrives
+# 2a: region-neutral phone; 2b: AED arrives
 im,d = canvas()
 rr(d, (179,166,333,316), TEAL, 8, 22)
 rr(d, (194,183,318,287), MUTED, 3, 7)
-tx(d,(256,235),'911',57,WHITE)
+ln(d,[(221,211),(227,239),(249,260),(279,264),(293,252)],WHITE,15)
+ell(d,(211,202,231,222),WHITE,3,WHITE)
+ell(d,(284,242,304,262),WHITE,3,WHITE)
 ell(d,(246,296,266,310),TEAL,3,TEAL)
 im.resize((W,W), Image.Resampling.LANCZOS).save(OUT/'call.png')
+
+# The Lens uses this wide focus version; keep its phone symbol free of numbers.
+focus_out = OUT/'Focus'
+focus_out.mkdir(exist_ok=True)
+focus = Image.new('RGBA',(420,210),DARK)
+fd = ImageDraw.Draw(focus)
+fd.line([(2,14),(418,14)],fill=MUTED,width=2)
+fd.line([(2,196),(418,196)],fill=MUTED,width=2)
+fd.rounded_rectangle((136,28,284,176),radius=22,outline=TEAL,width=7)
+fd.rounded_rectangle((151,43,269,145),radius=7,outline=MUTED,width=3)
+fd.line([(179,64),(185,93),(209,114),(239,119),(254,105)],fill=WHITE,width=14,joint='curve')
+fd.ellipse((169,54,189,74),fill=WHITE)
+fd.ellipse((244,95,264,115),fill=WHITE)
+fd.ellipse((200,155,220,169),fill=TEAL)
+focus.save(focus_out/'call.png')
 
 im,d = canvas()
 rr(d,(157,177,355,302),TEAL,8,21)

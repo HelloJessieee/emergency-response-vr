@@ -8,6 +8,7 @@ import { createInitialState, reduceEvent } from "./shared/engine.js";
 import { trainingReply } from "./shared/training-assistant.js";
 import { rephraseApproved } from "./shared/model-gateway.js";
 import { inspectTrainingImage, transcribeTrainingAudio, speakApprovedAnswer } from "./shared/media-gateway.js";
+import { classifyLensQuestion, lensCard } from "./shared/lens-assistant.js";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PORT) || 4173;
@@ -77,6 +78,32 @@ const server = http.createServer(async (request, response) => {
   const url = new URL(request.url, `http://${request.headers.host || "localhost"}`);
   if (url.pathname.startsWith('/api/') && !sameOrigin(request, url)) return json(response, 403, { error: 'Origin not allowed.' });
   if (url.pathname === '/api/ai-status') return json(response, 200, { enabled: aiAvailable(request) });
+  if (url.pathname === '/api/lens/ask') {
+    if (request.method !== 'POST') return json(response, 405, { error: 'POST required.' });
+    if (!aiAvailable(request)) return json(response, 503, { error: 'AI is unavailable on this connection.' });
+    if (limited(request, 'lens-ask', 8)) return json(response, 429, { error: 'Try again in a minute.' });
+    let payload;
+    try { payload = await readJson(request, 1024); }
+    catch { return json(response, 400, { error: 'Invalid question.' }); }
+    const question = typeof payload?.question === 'string' ? payload.question.trim() : '';
+    if (!question || question.length > 240) return json(response, 400, { error: 'Question must be 1–240 characters.' });
+    const classified = await classifyLensQuestion(question);
+    return json(response, 200, { ...lensCard(classified.topic), topic: classified.topic, mode: classified.mode });
+  }
+  if (url.pathname === '/api/lens/audio') {
+    if (request.method !== 'GET') return json(response, 405, { error: 'GET required.' });
+    if (!aiAvailable(request)) return json(response, 503, { error: 'AI is unavailable on this connection.' });
+    if (limited(request, 'lens-audio', 6)) return json(response, 429, { error: 'Try again in a minute.' });
+    const topic = String(url.searchParams.get('topic') || '');
+    if (!/^(overview|rate|depth|hands|aed|breathing|call|breaths|team|scope)$/.test(topic))
+      return json(response, 400, { error: 'Invalid topic.' });
+    try {
+      const bytes = await speakApprovedAnswer(lensCard(topic).lines.join(' '));
+      response.writeHead(200, { 'Content-Type': 'audio/mpeg', 'Content-Length': bytes.length, 'Cache-Control': 'no-store' });
+      response.end(bytes);
+    } catch { json(response, 502, { error: 'Speech unavailable.' }); }
+    return;
+  }
   if (url.pathname === '/api/vision') {
     if (request.method !== 'POST') return json(response, 405, { error: 'POST required.' });
     if (!aiAvailable(request)) return json(response, 503, { error: 'AI is unavailable on this connection.' });
